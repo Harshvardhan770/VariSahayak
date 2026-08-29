@@ -198,9 +198,21 @@
     <string name="lostfound_last_seen">Last seen</string>
 
     <!-- Communication -->
-    <string name="comms_title">Messages</string>
-    <string name="comms_message_hint">Write a message</string>
+    <string name="comms_title">Communication</string>
+    <string name="comms_channels">Channels</string>
+    <string name="comms_broadcast">Broadcast to all</string>
+    <string name="comms_all_hands">All Hands</string>
+    <string name="comms_online">%1$s online</string>
+    <string name="comms_sos_alert">SOS ALERT: %1$s</string>
+    <string name="comms_message_hint">Type a message…</string>
     <string name="comms_send">Send</string>
+    <string name="comms_quick_actions">Quick actions</string>
+    <string name="comms_send_sos">SEND SOS</string>
+    <string name="comms_flash_notification">Flash Notification</string>
+    <string name="comms_broadcasting_mode">Broadcasting Mode</string>
+    <string name="comms_select_all">Select All</string>
+    <string name="comms_deselect_all">Deselect All</string>
+    <string name="comms_broadcast_hint">Broadcasting to %1$d channels</string>
     <string name="comms_pending">Waiting to send</string>
 
     <!-- Documentation -->
