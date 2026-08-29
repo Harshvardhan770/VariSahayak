@@ -1,15 +1,23 @@
 package com.varisahayak.feature.lostfound
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -20,20 +28,34 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.varisahayak.R
+import com.varisahayak.core.common.AppError
 import com.varisahayak.core.designsystem.Dimens
 import com.varisahayak.core.designsystem.component.EmptyState
 import com.varisahayak.core.designsystem.component.SyncBadge
 import com.varisahayak.core.designsystem.component.VariPrimaryButton
+import com.varisahayak.core.designsystem.component.VariSecondaryButton
+import com.varisahayak.core.media.PhotoCapture
+import com.varisahayak.core.permissions.AppPermissions
+import com.varisahayak.core.permissions.rememberPermissionController
 import com.varisahayak.domain.model.LostFoundKind
 import com.varisahayak.domain.model.LostFoundReport
 import com.varisahayak.domain.model.LostFoundStatus
+import java.io.File
 
 /**
  * The Lost & Found board.
@@ -128,6 +150,8 @@ fun LostFoundScreen(
         ReportDialog(
             state = uiState,
             onChange = viewModel::updateForm,
+            onPhotoCaptured = viewModel::onPhotoCaptured,
+            onClearPhoto = viewModel::clearPhoto,
             onSubmit = viewModel::submitReport,
             onDismiss = viewModel::closeReport,
         )
@@ -137,9 +161,21 @@ fun LostFoundScreen(
         AlertDialog(
             onDismissRequest = viewModel::dismissConfirmation,
             title = { Text(stringResource(R.string.lostfound_title)) },
-            // The photo notice, when there is one, replaces the generic confirmation: it
-            // is the only thing on this dialog the volunteer might act on.
-            text = { Text(uiState.photoNotice ?: stringResource(R.string.report_saved_offline)) },
+            text = {
+                Text(
+                    when {
+                        // The photo verdict has not come back yet. Said plainly rather than
+                        // shown as a spinner: the report is already saved, and the volunteer
+                        // is free to close this and carry on.
+                        uiState.isProcessingPhoto ->
+                            stringResource(R.string.lostfound_photo_processing)
+                        // A photo notice replaces the generic confirmation — it is the only
+                        // thing on this dialog the volunteer might act on.
+                        uiState.photoNotice != null -> uiState.photoNotice!!
+                        else -> stringResource(R.string.report_saved_offline)
+                    },
+                )
+            },
             confirmButton = {
                 TextButton(onClick = viewModel::dismissConfirmation) {
                     Text(stringResource(R.string.action_close))
@@ -220,14 +256,23 @@ private fun LostFoundRow(report: LostFoundReport) {
 /**
  * The report form.
  *
- * Scrolls, because it is long — and it is long because collecting a clothing description
- * and a language from somebody who has no photograph is what makes the report matchable
- * at all. Only the first field is required.
+ * Rebuilt around the two things that actually matter when somebody is standing in front of
+ * you: a photograph, and a handful of attributes that can be tapped rather than typed.
+ *
+ * It used to be twelve free-text boxes behind a mandatory title. That cost a volunteer a
+ * minute of one-handed typing per report, and it cost the matching engine more than that —
+ * gender and language are compared by exact string equality, so hand-typed values almost
+ * never agreed between two people describing the same child.
+ *
+ * What survived but is rarely decisive now lives behind "More details". Nothing is
+ * mandatory: the report can be filed with a photograph and nothing else.
  */
 @Composable
 private fun ReportDialog(
     state: LostFoundUiState,
     onChange: ((ReportFormState) -> ReportFormState) -> Unit,
+    onPhotoCaptured: (String) -> Unit,
+    onClearPhoto: () -> Unit,
     onSubmit: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -245,7 +290,7 @@ private fun ReportDialog(
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(Dimens.SpaceSm),
+                verticalArrangement = Arrangement.spacedBy(Dimens.SpaceMd),
             ) {
                 state.scannedLocation?.let { location ->
                     Text(
@@ -254,62 +299,65 @@ private fun ReportDialog(
                     )
                 }
 
-                Field(
-                    value = state.form.title,
-                    onValueChange = { v -> onChange { it.copy(title = v) } },
-                    labelRes = R.string.lostfound_field_title,
-                    isError = state.error != null && state.form.title.isBlank(),
+                // First, and deliberately. A photograph is the most valuable thing on this
+                // form — it is the only input that feeds face matching — and putting it
+                // anywhere but the top makes it the thing people skip.
+                PhotoPicker(
+                    photoPath = state.form.photoLocalPath,
+                    onPhotoCaptured = onPhotoCaptured,
+                    onClear = onClearPhoto,
                 )
+
                 Field(
                     value = state.form.personName,
                     onValueChange = { v -> onChange { it.copy(personName = v) } },
                     labelRes = R.string.lostfound_field_name,
                 )
-                Field(
-                    value = state.form.approximateAge,
-                    onValueChange = { v ->
-                        // Digits only, so a typo cannot become a validation failure after
-                        // the volunteer has filled in the whole form.
-                        onChange { it.copy(approximateAge = v.filter(Char::isDigit).take(3)) }
-                    },
-                    labelRes = R.string.lostfound_field_age,
-                    keyboardType = KeyboardType.Number,
+
+                AgeSelector(
+                    age = state.form.approximateAge,
+                    onAgeChange = { v -> onChange { it.copy(approximateAge = v) } },
                 )
-                Field(
-                    value = state.form.gender,
-                    onValueChange = { v -> onChange { it.copy(gender = v) } },
+
+                ChoiceRow(
                     labelRes = R.string.lostfound_field_gender,
+                    options = GenderOption.entries,
+                    selected = state.form.gender,
+                    onSelect = { option -> onChange { it.copy(gender = option) } },
                 )
-                Field(
-                    value = state.form.clothingDescription,
-                    onValueChange = { v -> onChange { it.copy(clothingDescription = v) } },
-                    labelRes = R.string.lostfound_field_clothing,
+
+                ClothingSelector(
+                    colours = state.form.clothingColours,
+                    detail = state.form.clothingDetail,
+                    onToggleColour = { colour ->
+                        onChange { form ->
+                            val next = form.clothingColours.toMutableSet()
+                            if (!next.add(colour)) next.remove(colour)
+                            form.copy(clothingColours = next)
+                        }
+                    },
+                    onDetailChange = { v -> onChange { it.copy(clothingDetail = v) } },
                 )
-                Field(
-                    value = state.form.physicalDescription,
-                    onValueChange = { v -> onChange { it.copy(physicalDescription = v) } },
-                    labelRes = R.string.lostfound_field_physical,
-                )
-                Field(
-                    value = state.form.language,
-                    onValueChange = { v -> onChange { it.copy(language = v) } },
+
+                ChoiceRow(
                     labelRes = R.string.lostfound_field_language,
+                    options = LanguageOption.entries,
+                    selected = state.form.language,
+                    onSelect = { option -> onChange { it.copy(language = option) } },
                 )
 
                 if (isFound) {
-                    Field(
-                        value = state.form.condition,
-                        onValueChange = { v -> onChange { it.copy(condition = v) } },
+                    // Triage for whoever comes to help. Found side only — nobody filing a
+                    // missing-person report can say how the person is right now.
+                    ChoiceRow(
                         labelRes = R.string.lostfound_field_condition,
+                        options = ConditionOption.entries,
+                        selected = state.form.condition,
+                        onSelect = { option -> onChange { it.copy(condition = option) } },
                     )
                 } else {
-                    // Guardian contact belongs to the Lost side: it is who to call when
-                    // the child is found.
-                    Field(
-                        value = state.form.guardianName,
-                        onValueChange = { v -> onChange { it.copy(guardianName = v) } },
-                        labelRes = R.string.lostfound_field_guardian,
-                    )
+                    // The single most valuable field for actually reuniting anybody, so it
+                    // stays on the fast path rather than going behind the expander.
                     Field(
                         value = state.form.guardianPhone,
                         onValueChange = { v -> onChange { it.copy(guardianPhone = v) } },
@@ -318,19 +366,30 @@ private fun ReportDialog(
                     )
                 }
 
-                Field(
-                    value = state.form.additionalNotes,
-                    onValueChange = { v -> onChange { it.copy(additionalNotes = v) } },
-                    labelRes = R.string.lostfound_field_notes,
-                )
+                MoreDetails(
+                    expanded = state.form.isExpanded,
+                    onToggle = { onChange { it.copy(isExpanded = !it.isExpanded) } },
+                ) {
+                    if (!isFound) {
+                        Field(
+                            value = state.form.guardianName,
+                            onValueChange = { v -> onChange { it.copy(guardianName = v) } },
+                            labelRes = R.string.lostfound_field_guardian,
+                        )
+                    }
+                    Field(
+                        value = state.form.physicalDescription,
+                        onValueChange = { v -> onChange { it.copy(physicalDescription = v) } },
+                        labelRes = R.string.lostfound_field_physical,
+                    )
+                    Field(
+                        value = state.form.additionalNotes,
+                        onValueChange = { v -> onChange { it.copy(additionalNotes = v) } },
+                        labelRes = R.string.lostfound_field_notes,
+                    )
+                }
 
-                Text(
-                    text = stringResource(R.string.lostfound_photo_optional),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-
-                (state.error as? com.varisahayak.core.common.AppError.Validation)?.let { error ->
+                (state.error as? AppError.Validation)?.let { error ->
                     Text(
                         text = error.message,
                         style = MaterialTheme.typography.bodySmall,
@@ -353,6 +412,284 @@ private fun ReportDialog(
     )
 }
 
+/**
+ * Take a photo, or choose one, or neither.
+ *
+ * Both routes matter. A volunteer standing with a found child takes the picture; a parent
+ * reporting a missing one almost always has a photograph already on their phone, and asking
+ * them to photograph their own phone screen would be absurd.
+ *
+ * Capture writes straight into the app's private storage through a FileProvider, so the
+ * image never reaches the device gallery — see [PhotoCapture].
+ */
+@Composable
+private fun PhotoPicker(
+    photoPath: String?,
+    onPhotoCaptured: (String) -> Unit,
+    onClear: () -> Unit,
+) {
+    val context = LocalContext.current
+
+    // Held across the launcher round trip: the result callback is told only whether the
+    // capture succeeded, not where it was written.
+    var pendingCapture by remember { mutableStateOf<File?>(null) }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.TakePicture(),
+    ) { saved ->
+        val file = pendingCapture
+        pendingCapture = null
+
+        if (saved && file != null && PhotoCapture.normalise(file)) {
+            onPhotoCaptured(file.absolutePath)
+        } else {
+            // A cancelled capture leaves a zero-byte file behind. Removing it here is what
+            // stops private storage filling with empties over a day on the route.
+            file?.delete()
+        }
+    }
+
+    fun launchCamera() {
+        val (file, uri) = PhotoCapture.newCaptureTarget(context)
+        pendingCapture = file
+        cameraLauncher.launch(uri)
+    }
+
+    val cameraPermission = rememberPermissionController(AppPermissions.CAMERA) { result ->
+        if (result.values.any { it }) launchCamera()
+    }
+
+    val galleryLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia(),
+    ) { uri ->
+        // Imported rather than referenced: a picker grant does not survive a process
+        // restart, and a report filed offline may not upload for hours.
+        uri?.let { PhotoCapture.importFromUri(context, it)?.let(onPhotoCaptured) }
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(Dimens.SpaceXs)) {
+        Text(
+            text = stringResource(R.string.lostfound_photo_label),
+            style = MaterialTheme.typography.titleSmall,
+        )
+
+        if (photoPath != null) {
+            PhotoPreview(path = photoPath, onClear = onClear)
+        }
+
+        Row(horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceSm)) {
+            VariSecondaryButton(
+                text = stringResource(
+                    if (photoPath == null) {
+                        R.string.lostfound_photo_take
+                    } else {
+                        R.string.lostfound_photo_retake
+                    },
+                ),
+                onClick = {
+                    when {
+                        cameraPermission.state.isAnyGranted -> launchCamera()
+                        // Re-requesting after "don't ask again" is silently dropped by the
+                        // system, so the only honest route left is app settings.
+                        cameraPermission.isPermanentlyDenied -> cameraPermission.openAppSettings()
+                        else -> cameraPermission.request()
+                    }
+                },
+                modifier = Modifier.weight(1f),
+            )
+            VariSecondaryButton(
+                text = stringResource(R.string.lostfound_photo_choose),
+                onClick = {
+                    galleryLauncher.launch(
+                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                    )
+                },
+                modifier = Modifier.weight(1f),
+            )
+        }
+
+        Text(
+            text = stringResource(R.string.lostfound_photo_optional),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/**
+ * The attached photograph, with a way to remove it.
+ *
+ * Decoded at a sample size rather than in full: this runs during composition, and decoding
+ * a 1280px JPEG on the main thread is a visible stutter on the phones this app targets.
+ */
+@Composable
+private fun PhotoPreview(path: String, onClear: () -> Unit) {
+    val bitmap = remember(path) { PhotoCapture.thumbnail(path) }
+
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceSm),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (bitmap != null) {
+            Image(
+                bitmap = bitmap.asImageBitmap(),
+                // Labelled for a screen reader, but not described. Nothing here should try
+                // to characterise a photograph of a missing child.
+                contentDescription = stringResource(R.string.lostfound_photo_label),
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(PHOTO_PREVIEW_SIZE)
+                    .clip(MaterialTheme.shapes.medium),
+            )
+        }
+        TextButton(onClick = onClear) {
+            Text(stringResource(R.string.lostfound_photo_remove))
+        }
+    }
+}
+
+/**
+ * Age, by tap or by keyboard.
+ *
+ * The presets write a representative number rather than a range, because the engine scores
+ * age numerically with a ±2 tolerance and a range would throw that away. A volunteer who
+ * knows the exact age types it; one who only knows "a small child" taps once and still
+ * contributes a signal that two reports can agree on.
+ */
+@Composable
+private fun AgeSelector(age: String, onAgeChange: (String) -> Unit) {
+    val selected = remember(age) { AgePreset.forAge(age.toIntOrNull()) }
+
+    Column(verticalArrangement = Arrangement.spacedBy(Dimens.SpaceXs)) {
+        Text(
+            text = stringResource(R.string.lostfound_field_age),
+            style = MaterialTheme.typography.titleSmall,
+        )
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceSm),
+            verticalArrangement = Arrangement.spacedBy(Dimens.SpaceXs),
+        ) {
+            AgePreset.entries.forEach { preset ->
+                FilterChip(
+                    selected = selected == preset,
+                    onClick = {
+                        // Tapping the active band clears it, so a mis-tap costs one tap to
+                        // undo rather than a trip to the keyboard.
+                        onAgeChange(
+                            if (selected == preset) "" else preset.representativeAge.toString(),
+                        )
+                    },
+                    label = { Text(stringResource(preset.labelRes)) },
+                    modifier = Modifier.defaultMinSize(minHeight = Dimens.MinTouchTarget),
+                )
+            }
+        }
+        Field(
+            value = age,
+            onValueChange = { v -> onAgeChange(v.filter(Char::isDigit).take(3)) },
+            labelRes = R.string.lostfound_field_age_exact,
+            keyboardType = KeyboardType.Number,
+        )
+    }
+}
+
+/**
+ * Clothing: tapped colours plus optional detail.
+ *
+ * The engine compares clothing as a bag of words with Jaccard overlap, so the tapped colours
+ * are what make two hurried descriptions agree — "mustard kurta" and "yellow top" overlap on
+ * nothing. The free text is what distinguishes one child in a yellow shirt from the next.
+ */
+@Composable
+private fun ClothingSelector(
+    colours: Set<ClothingColour>,
+    detail: String,
+    onToggleColour: (ClothingColour) -> Unit,
+    onDetailChange: (String) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(Dimens.SpaceXs)) {
+        Text(
+            text = stringResource(R.string.lostfound_field_clothing),
+            style = MaterialTheme.typography.titleSmall,
+        )
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceSm),
+            verticalArrangement = Arrangement.spacedBy(Dimens.SpaceXs),
+        ) {
+            ClothingColour.entries.forEach { colour ->
+                FilterChip(
+                    selected = colour in colours,
+                    onClick = { onToggleColour(colour) },
+                    label = { Text(stringResource(colour.labelRes)) },
+                    modifier = Modifier.defaultMinSize(minHeight = Dimens.MinTouchTarget),
+                )
+            }
+        }
+        Field(
+            value = detail,
+            onValueChange = onDetailChange,
+            labelRes = R.string.lostfound_field_clothing_detail,
+        )
+    }
+}
+
+/** A labelled row of single-choice chips over any [ReportOption] set. */
+@Composable
+private fun <T : ReportOption> ChoiceRow(
+    labelRes: Int,
+    options: List<T>,
+    selected: T?,
+    onSelect: (T?) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(Dimens.SpaceXs)) {
+        Text(text = stringResource(labelRes), style = MaterialTheme.typography.titleSmall)
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceSm),
+            verticalArrangement = Arrangement.spacedBy(Dimens.SpaceXs),
+        ) {
+            options.forEach { option ->
+                FilterChip(
+                    selected = selected == option,
+                    // Re-tapping clears. A volunteer who mis-taps must not be stuck with a
+                    // wrong attribute on a report that will be matched against.
+                    onClick = { onSelect(if (selected == option) null else option) },
+                    label = { Text(stringResource(option.labelRes)) },
+                    modifier = Modifier.defaultMinSize(minHeight = Dimens.MinTouchTarget),
+                )
+            }
+        }
+    }
+}
+
+/**
+ * The fields worth having and rarely worth waiting for.
+ *
+ * Collapsed by default. They still feed the matching engine when filled in — this is about
+ * what a volunteer is asked for while somebody is standing in front of them, not about what
+ * the report is able to hold.
+ */
+@Composable
+private fun MoreDetails(
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(Dimens.SpaceSm)) {
+        TextButton(onClick = onToggle) {
+            Text(
+                stringResource(
+                    if (expanded) {
+                        R.string.lostfound_fewer_details
+                    } else {
+                        R.string.lostfound_more_details
+                    },
+                ),
+            )
+        }
+        if (expanded) content()
+    }
+}
+
 @Composable
 private fun Field(
     value: String,
@@ -373,3 +710,5 @@ private fun Field(
             .defaultMinSize(minHeight = Dimens.MinTouchTarget),
     )
 }
+
+private val PHOTO_PREVIEW_SIZE = 96.dp

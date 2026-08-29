@@ -90,6 +90,22 @@
             </intent-filter>
         </receiver>
 
+        <!--
+            Grants the camera app write access to one file inside our own storage, for the
+            duration of one capture. A FileProvider rather than a MediaStore entry because a
+            photograph of a missing child must not land in the device gallery, where it
+            would be backed up, synced and shared outside the app entirely.
+        -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
         <!-- Hilt supplies the WorkerFactory; the default initializer must be removed. -->
         <provider
             android:name="androidx.startup.InitializationProvider"
