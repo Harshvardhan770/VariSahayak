@@ -30,6 +30,9 @@
     <string name="state_error">Something went wrong</string>
 
     <!-- Auth -->
+    <string name="landing_title">VARI Sahayak</string>
+    <string name="landing_subtitle">Coordination and support platform</string>
+    <string name="landing_cta">Sign in</string>
     <string name="auth_title">Sign in</string>
     <string name="auth_subtitle">VARI Sahayak coordination platform</string>
     <string name="auth_email">Email</string>
