@@ -127,6 +127,8 @@
     <string name="permission_location_denied">स्थान की अनुमति अस्वीकृत। घटनाएँ निर्देशांक के बिना दर्ज होंगी।</string>
     <string name="permission_location_coarse_only">केवल अनुमानित स्थान — सटीकता कम है।</string>
     <string name="permission_location_disabled">डिवाइस का स्थान बंद है।</string>
+    <string name="permission_location_grant">स्थान की अनुमति दें</string>
+    <string name="permission_location_turn_on">डिवाइस का स्थान चालू करें</string>
 
     <string name="permission_camera_title">कैमरा की अनुमति</string>
     <string name="permission_camera_rationale">बिना फ़ोन वाले वारकरी की सहायता हेतु QR पहचानकर्ता स्कैन करने के लिए कैमरा उपयोग होता है। आप कोड हाथ से भी दर्ज कर सकते हैं।</string>

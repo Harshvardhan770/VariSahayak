@@ -127,6 +127,8 @@
     <string name="permission_location_denied">ठिकाणाची परवानगी नाकारली. घटना निर्देशांकांशिवाय नोंदवल्या जातील.</string>
     <string name="permission_location_coarse_only">फक्त अंदाजे ठिकाण — अचूकता कमी आहे.</string>
     <string name="permission_location_disabled">उपकरणाचे ठिकाण बंद आहे.</string>
+    <string name="permission_location_grant">स्थानाची परवानगी द्या</string>
+    <string name="permission_location_turn_on">डिव्हाइसचे स्थान चालू करा</string>
 
     <string name="permission_camera_title">कॅमेऱ्याची परवानगी</string>
     <string name="permission_camera_rationale">फोन नसलेल्या वारकऱ्याला मदत करण्यासाठी QR ओळखचिन्ह स्कॅन करण्यास कॅमेरा वापरला जातो. तुम्ही कोड हाताने देखील टाकू शकता.</string>

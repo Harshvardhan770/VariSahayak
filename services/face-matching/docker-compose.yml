@@ -1,0 +1,53 @@
+# Deployment for a Linux Google Cloud Compute Engine VM.
+#
+#   docker compose up -d --build
+#
+# The service listens on FACE_PORT (8080 by default) and is expected to sit behind either
+# the VM firewall or a reverse proxy terminating TLS. Nothing here binds a public address
+# on its own — see README.md for the two supported exposure models.
+
+services:
+  face-matching:
+    build: .
+    image: varisahayak/face-matching:latest
+    restart: unless-stopped
+
+    # Configuration comes from a .env file beside this one, never from the image.
+    env_file:
+      - .env
+
+    ports:
+      # Bound to the loopback interface by default. Behind a reverse proxy on the same VM
+      # this is all you want; to publish it directly, set FACE_BIND to 0.0.0.0 and let the
+      # GCP firewall rule decide who may reach the port.
+      - "${FACE_BIND:-127.0.0.1}:${FACE_PORT:-8080}:8080"
+
+    volumes:
+      # Model weights, persisted across restarts. Without this every `docker compose up`
+      # re-downloads several hundred MB of Facenet and RetinaFace before serving anything.
+      - deepface-weights:/opt/deepface
+
+    # Ceilings, not reservations. TensorFlow will happily use every core on the box and
+    # starve the reverse proxy next to it.
+    deploy:
+      resources:
+        limits:
+          memory: ${FACE_MEMORY_LIMIT:-3g}
+
+    logging:
+      # A VM disk fills quietly. Capping here is what stops six months of access logs from
+      # taking the service down.
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 90s
+      retries: 3
+
+volumes:
+  deepface-weights:

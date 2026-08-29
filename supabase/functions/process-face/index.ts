@@ -3,22 +3,27 @@ import { withSupabase } from 'npm:@supabase/server@^1'
 /**
  * Bridges the Lost & Found records to the Python OpenCV/DeepFace service.
  *
- * The Python service is a *computation* service, never the system of record. The
- * authoritative flow is:
+ * The Python service is a *computation* service, never the system of record. It keeps face
+ * embeddings in its own MongoDB and has no connection to this database at all — so the
+ * status it computes is written back HERE, by this function, under the caller's RLS:
  *
  *   Android app -> existing Lost & Found repository -> existing PostgreSQL schema
  *                                                   \-> this function -> Python CV service
- *                                                                     -> embedding written
- *                                                                        back into the
- *                                                                        existing schema
+ *                                                                     -> embedding stored in
+ *                                                                        MongoDB, status
+ *                                                                        returned
+ *                                                   <-/ face_match_status written back here
  *
- * Two rules govern everything here:
+ * Three rules govern everything here:
  *
  * 1. **The client uploads photographs, never embeddings.** A client-supplied vector would
  *    be trivially forged, and this function never accepts one.
  * 2. **Nothing about face processing may block a report.** Every failure path returns 200
  *    with a status the caller records and moves on from. The report has already been saved
  *    on its non-photo fields and stays fully matchable without a face signal.
+ * 3. **The status write is best-effort too.** If face processing succeeded but recording
+ *    the status did not, the volunteer is still told what happened to their photograph.
+ *    A failed bookkeeping write is not worth turning a good result into an error.
  */
 
 const FACE_SERVICE_URL = Deno.env.get('FACE_SERVICE_URL')
@@ -89,18 +94,31 @@ export default {
 
     const action = payload.action ?? 'enrol'
 
-    if (action === 'enrol') {
+    if (action === 'enrol' || action === 'enroll') {
       if (!payload.image) {
         return Response.json({ ok: false, message: 'An image is required.' }, { status: 400 })
       }
-      return await callFaceService('/enrol', {
+
+      // kind and subject_type travel with the photograph because the face service stores
+      // them alongside the embedding, and they are what lets /compare search the opposite
+      // side of the board. Without them every profile would look like a LOST person.
+      const response = await callFaceService('/enroll', {
+        person_id: reportId,
         report_client_id: reportId,
+        kind: report.kind,
+        subject_type: report.subject_type,
         image: payload.image,
       })
+
+      await recordStatus(ctx, reportId, response)
+      return response
     }
 
     if (action === 'compare') {
-      const response = await callFaceService('/compare', { report_client_id: reportId })
+      const response = await callFaceService('/compare', {
+        person_id: reportId,
+        report_client_id: reportId,
+      })
 
       // Distances are a ranking signal against named counterparts, not identity. The
       // caller folds them into the multi-attribute score, where face is one weight of ten.
@@ -152,6 +170,7 @@ async function callFaceService(path: string, body: unknown): Promise<Response> {
       face_available: result.face_available ?? false,
       distances: result.distances ?? {},
       eligible: result.eligible ?? [],
+      sample_count: result.sample_count ?? 0,
     })
   } catch (error) {
     // AbortError and network failures both land here.
@@ -162,5 +181,41 @@ async function callFaceService(path: string, body: unknown): Promise<Response> {
     )
   } finally {
     clearTimeout(timeout)
+  }
+}
+
+/**
+ * Writes the face outcome onto the Lost & Found report.
+ *
+ * This exists because the Python service moved its storage to MongoDB and no longer holds
+ * a connection to this database — which is the safer arrangement, since a service that
+ * accepts uploads from the internet now has no way to reach pilgrim records at all. The
+ * cost is that somebody has to carry the status across, and this is the only place that
+ * already has both the report id and an RLS-scoped client.
+ *
+ * Deliberately never throws. A photograph that processed correctly must be reported as
+ * such even if this bookkeeping write fails; the next enrolment attempt corrects it.
+ */
+async function recordStatus(ctx: any, reportId: string, response: Response): Promise<void> {
+  try {
+    const body = await response.clone().json()
+    const status = body?.status
+
+    const known = ['READY', 'NO_FACE', 'MULTIPLE_FACES', 'INVALID_IMAGE', 'SERVICE_UNAVAILABLE']
+    if (typeof status !== 'string' || !known.includes(status)) return
+
+    // SERVICE_UNAVAILABLE is transient and is not recorded. Writing it would turn a
+    // retryable outage into a permanent state on the report, and the next attempt would
+    // have no way to tell it apart from a genuinely unusable photograph.
+    if (status === 'SERVICE_UNAVAILABLE') return
+
+    const { error } = await ctx.supabase
+      .from('lost_found_items')
+      .update({ face_match_status: status, updated_at: new Date().toISOString() })
+      .eq('client_id', reportId)
+
+    if (error) console.warn('Could not record face status:', error.code)
+  } catch (error) {
+    console.warn('Could not record face status:', (error as Error).name)
   }
 }
