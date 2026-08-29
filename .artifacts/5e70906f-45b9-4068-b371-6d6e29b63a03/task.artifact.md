@@ -1,7 +1,0 @@
-- [x] Set up Repository Hilt modules
-- [x] Implement `AuthRepositoryImpl`
-- [x] Implement `ProfileRepositoryImpl`
-- [x] Implement `SignInViewModel`
-- [x] Implement `SignInScreen`
-- [x] Integrate Auth and Role-aware navigation in `VariSahayakApp`
-- [ ] Verify functionality with seed users
