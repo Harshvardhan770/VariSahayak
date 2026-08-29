@@ -11,6 +11,7 @@ import com.varisahayak.domain.repository.AuthState
 import com.varisahayak.domain.repository.IncidentRepository
 import com.varisahayak.domain.repository.ProfileRepository
 import com.varisahayak.data.sync.SyncScheduler
+import com.varisahayak.feature.notifications.LocalAlertNotifier
 import com.varisahayak.feature.notifications.NotificationDeepLinkBus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -33,6 +34,7 @@ class MainViewModel @Inject constructor(
     private val profileRepository: ProfileRepository,
     connectivityObserver: ConnectivityObserver,
     private val locationTracker: LocationTracker,
+    private val localAlertNotifier: LocalAlertNotifier,
     private val walkieController: WalkieController,
     private val incidentRepository: IncidentRepository,
     private val syncScheduler: SyncScheduler,
@@ -109,7 +111,21 @@ class MainViewModel @Inject constructor(
 
     fun stopLocationTracking() = locationTracker.stop()
 
+    /**
+     * Local SOS alerts, started alongside location tracking.
+     *
+     * Push would be the right delivery route and is unavailable — the build carries no
+     * `google-services.json`, so FCM never registers and the tray stayed empty. This
+     * announces what the device already knows. See [LocalAlertNotifier].
+     */
+    fun startLocalAlerts() = localAlertNotifier.start()
+
+    fun stopLocalAlerts() = localAlertNotifier.stop()
+
     fun consumeNotification() = deepLinkBus.consume()
+
+    /** Joins a radio channel. The picker in the widget is the only caller. */
+    fun joinWalkieChannel(channelId: String) = walkieController.join(channelId)
 
     fun startTransmit() = walkieController.startTransmit()
 

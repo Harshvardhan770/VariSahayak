@@ -107,6 +107,15 @@ fun VariSahayakApp(
         onStop = viewModel::stopLocationTracking,
     )
 
+    // SOS alerts in the system tray. The push path never fired — this build has no
+    // google-services.json, so FCM has no project to register against and
+    // VariSahayakMessagingService is never called. This announces what sync already
+    // delivered, which covers everything except a fully backgrounded process.
+    LifecycleResumeEffect(profile != null) {
+        if (profile != null) viewModel.startLocalAlerts()
+        onPauseOrDispose { viewModel.stopLocalAlerts() }
+    }
+
     // A tapped notification names a server incident id; every route here is keyed by the
     // device-generated client id. Resolve, then navigate, then clear — so a configuration
     // change does not replay the tap and yank the user back.
@@ -210,6 +219,7 @@ fun VariSahayakApp(
                             onToggleExpanded = { walkieExpanded = !walkieExpanded },
                             onStartTransmit = viewModel::startTransmit,
                             onStopTransmit = viewModel::stopTransmit,
+                            onSelectChannel = viewModel::joinWalkieChannel,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(
