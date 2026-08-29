@@ -14,6 +14,7 @@ import com.varisahayak.core.common.AppError
 @Composable
 fun SignInScreen(
     viewModel: SignInViewModel,
+    onNavigateToSignUp: () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -90,6 +91,12 @@ fun SignInScreen(
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodySmall
             )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        TextButton(onClick = onNavigateToSignUp) {
+            Text(text = stringResource(R.string.auth_no_account))
         }
     }
 }

@@ -27,6 +27,10 @@
     <string name="auth_email">ईमेल</string>
     <string name="auth_password">पासवर्ड</string>
     <string name="auth_sign_in">साइन इन</string>
+    <string name="auth_sign_up">साइन अप</string>
+    <string name="auth_display_name">पूर्ण नाव</string>
+    <string name="auth_no_account">खाते नाही का? साइन अप करा</string>
+    <string name="auth_has_account">आधीच खाते आहे? साइन इन करा</string>
     <string name="auth_sign_out">साइन आउट</string>
     <string name="auth_error_invalid_credentials">ईमेल किंवा पासवर्ड चुकीचा आहे.</string>
     <string name="auth_error_offline">जोडणी नाही. साइन इनसाठी इंटरनेट आवश्यक आहे.</string>

@@ -12,6 +12,8 @@ import io.github.jan.supabase.auth.status.SessionStatus
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -48,6 +50,22 @@ class AuthRepositoryImpl @Inject constructor(
                     else -> AppError.Network(cause = e)
                 }
                 Outcome.Failure(error)
+            }
+        }
+
+    override suspend fun signUp(email: String, password: String, displayName: String): Outcome<Unit> =
+        withContext(dispatchers.io) {
+            try {
+                supabase.auth.signUpWith(Email) {
+                    this.email = email
+                    this.password = password
+                    data = buildJsonObject {
+                        put("display_name", displayName)
+                    }
+                }
+                Outcome.Success(Unit)
+            } catch (e: Exception) {
+                Outcome.Failure(AppError.Network(cause = e))
             }
         }
 
