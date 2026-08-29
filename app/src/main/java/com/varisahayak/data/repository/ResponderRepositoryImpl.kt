@@ -145,6 +145,7 @@ private fun ResponderDto.toEntity(cachedAt: Long): ResponderEntity = ResponderEn
 
 private fun ResponderEntity.toDomain(): Responder = Responder(
     userId = userId,
+    displayName = displayName,
     role = UserRole.fromWire(role) ?: UserRole.VOLUNTEER,
     availability = ResponderAvailability.fromWire(availability),
     areaId = areaId,

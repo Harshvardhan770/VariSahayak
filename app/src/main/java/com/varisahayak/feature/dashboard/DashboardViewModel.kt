@@ -13,6 +13,7 @@ import com.varisahayak.domain.model.Incident
 import com.varisahayak.domain.model.IncidentCategory
 import com.varisahayak.domain.model.IncidentStatus
 import com.varisahayak.domain.model.Profile
+import com.varisahayak.domain.model.Responder
 import com.varisahayak.domain.model.ResponderAvailability
 import com.varisahayak.domain.model.capabilities
 import com.varisahayak.domain.repository.IncidentRepository
@@ -37,6 +38,18 @@ data class DashboardUiState(
     val openIncidents: List<Incident> = emptyList(),
     val assignedIncidents: List<Incident> = emptyList(),
     val activeSosList: List<Incident> = emptyList(),
+    /**
+     * Every incident this device holds, open or closed.
+     *
+     * Separate from [openIncidents] because the trend chart and the "completed" counter
+     * are both questions about work that is finished, and an open-only list cannot answer
+     * either.
+     */
+    val allIncidents: List<Incident> = emptyList(),
+    /** Available responders, for the nearby roster. Empty for roles RLS hides it from. */
+    val nearbyResponders: List<Responder> = emptyList(),
+    /** Best-effort own position, for distance readouts. Null is a supported state. */
+    val myLocation: GeoPoint? = null,
     val unsyncedCount: Int = 0,
     /** Drives the offline queue pill. UI messaging only — it never gates a write. */
     val isOffline: Boolean = false,
@@ -66,7 +79,16 @@ class DashboardViewModel @Inject constructor(
     private val _error = MutableStateFlow<AppError?>(null)
     private val _sosRaisedSuccess = MutableStateFlow(false)
 
-    val uiState: StateFlow<DashboardUiState> = combine(
+    private val _myLocation = MutableStateFlow<GeoPoint?>(null)
+
+    /**
+     * The five flows every role needs.
+     *
+     * Split from the dashboard-only streams below because `combine` tops out at five typed
+     * arguments; nesting keeps both halves type-checked rather than dropping to the untyped
+     * vararg overload.
+     */
+    private val core = combine(
         profileRepository.observeCurrentProfile(),
         incidentRepository.observeOpen(),
         incidentRepository.observeActiveSos(),
@@ -88,6 +110,20 @@ class DashboardViewModel @Inject constructor(
             isLoading = false,
             error = _error.value,
             sosRaisedSuccess = _sosRaisedSuccess.value,
+        )
+    }
+
+    val uiState: StateFlow<DashboardUiState> = combine(
+        core,
+        incidentRepository.observeAll(),
+        responderRepository.observeAvailable(),
+        _myLocation,
+    ) { state, all, responders, location ->
+        state.copy(
+            allIncidents = all,
+            // Never list the signed-in user as somebody nearby to call.
+            nearbyResponders = responders.filter { it.userId != state.profile?.userId },
+            myLocation = location,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -170,4 +206,17 @@ class DashboardViewModel @Inject constructor(
      * can disagree about what has been sent.
      */
     fun retrySync() = syncScheduler.requestSync()
+
+    /**
+     * Take a position fix for the dashboard's distance readouts.
+     *
+     * Best-effort and never blocking: a denied permission or a slow fix leaves
+     * [DashboardUiState.myLocation] null, and every distance simply goes unshown rather
+     * than the screen failing.
+     */
+    fun refreshMyLocation() {
+        viewModelScope.launch {
+            _myLocation.value = locationProvider.currentFix().pointOrNull
+        }
+    }
 }

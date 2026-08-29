@@ -35,6 +35,7 @@
     <string name="auth_error_invalid_credentials">ईमेल या पासवर्ड गलत है।</string>
     <string name="auth_error_offline">कोई कनेक्शन नहीं। साइन इन के लिए इंटरनेट आवश्यक है।</string>
     <string name="auth_error_no_role">आपके खाते को कोई भूमिका नहीं दी गई है। प्रशासक से संपर्क करें।</string>
+    <string name="auth_error_profile_unavailable">साइन इन हो गया, लेकिन आपके खाते का विवरण लोड नहीं हो सका। फिर से प्रयास करें, या प्रशासक से संपर्क करें।</string>
     <string name="auth_session_expired">आपका सत्र समाप्त हो गया। पुनः साइन इन करें — इस डिवाइस पर सहेजा गया कुछ भी नहीं खोया है।</string>
     <string name="auth_checking_session">आपका सत्र जाँचा जा रहा है…</string>
 
@@ -325,4 +326,60 @@
     <string name="landing_cta">साइन इन करें</string>
     <string name="qr_location_choose_action">यहाँ आप क्या करना चाहेंगे?</string>
     <string name="qr_action_report_emergency">आपातकाल की सूचना दें</string>
+
+    <!-- ============ role dashboards ============ -->
+    <string name="dashboard_greeting">नमस्ते, %1$s</string>
+    <string name="dashboard_you">आप</string>
+    <string name="dashboard_view_all">सभी देखें</string>
+    <string name="dashboard_view_details">विवरण देखें</string>
+    <string name="dashboard_view_map">नक्शा देखें</string>
+    <string name="dashboard_my_tasks">मेरे कार्य</string>
+    <string name="dashboard_new_assigned">नए सौंपे गए</string>
+    <string name="dashboard_in_progress">चल रहे</string>
+    <string name="dashboard_completed">पूर्ण</string>
+    <string name="dashboard_active_incident">सक्रिय घटना</string>
+    <string name="dashboard_incidents_near_you">आपके पास की घटनाएँ</string>
+    <string name="dashboard_nearby_responders">आस-पास के उत्तरदाता</string>
+    <string name="dashboard_no_responders">आस-पास कोई उत्तरदाता ड्यूटी पर नहीं है</string>
+    <string name="dashboard_response_rate">प्रतिक्रिया दर</string>
+    <string name="dashboard_unassigned">बिना सौंपे</string>
+    <string name="dashboard_overview">डैशबोर्ड अवलोकन</string>
+
+    <!-- ============ admin ============ -->
+    <string name="admin_active_responders">सक्रिय उत्तरदाता</string>
+    <string name="admin_sos_today">SOS अलर्ट (आज)</string>
+    <string name="admin_incidents_overview">घटनाओं का अवलोकन</string>
+    <string name="admin_last_days">पिछले %1$d दिन</string>
+    <string name="admin_incident_mix">घटना वितरण</string>
+    <string name="admin_total">कुल</string>
+    <string name="admin_operational_alerts">परिचालन अलर्ट</string>
+    <string name="admin_alert_failed_sync">%1$d रिपोर्ट सिंक नहीं हो सकीं</string>
+    <string name="admin_alert_failed_sync_detail">वे डिवाइस पर सुरक्षित हैं और पुनः प्रयास होगा।</string>
+    <string name="admin_alert_unassigned">%1$d खुली घटनाओं का कोई उत्तरदाता नहीं</string>
+    <string name="admin_alert_unassigned_detail">मिलान में कोई उपलब्ध नहीं मिला।</string>
+    <string name="admin_alert_critical">%1$d गंभीर घटनाएँ खुली हैं</string>
+    <string name="admin_alert_critical_detail">इसमें हर सक्रिय SOS शामिल है।</string>
+    <string name="admin_all_clear">अभी किसी बात पर ध्यान देने की ज़रूरत नहीं</string>
+
+    <!-- ============ police ============ -->
+    <string name="police_patrol_tasks">गश्ती कार्य</string>
+    <string name="police_crowd_incidents">भीड़ और यातायात</string>
+
+    <!-- ============ medical ============ -->
+    <string name="medical_calls_today">चिकित्सा कॉल</string>
+    <string name="medical_patients_treated">उपचारित</string>
+    <string name="medical_sos_active">सक्रिय SOS</string>
+
+    <!-- ============ ngo ============ -->
+    <string name="ngo_relief_activities">राहत गतिविधियाँ</string>
+    <string name="ngo_open_requests">खुले अनुरोध</string>
+    <string name="ngo_people_helped">सहायता प्राप्त लोग</string>
+    <string name="ngo_relief_overview">राहत वितरण</string>
+
+    <!-- ============ not-yet-connected panels ============ -->
+    <string name="not_connected_supplies">आपूर्ति ट्रैकिंग अभी जुड़ी नहीं है। बैकएंड में आपूर्ति तालिका मौजूद नहीं है।</string>
+    <string name="not_connected_health">सेवा स्वास्थ्य जाँच अभी जुड़ी नहीं है।</string>
+    <string name="not_connected_chart">रुझान बनाने के लिए अभी पर्याप्त डेटा नहीं है।</string>
+    <string name="not_connected_breakdown">अभी विभाजित करने के लिए कोई घटना नहीं है।</string>
+
 </resources>
