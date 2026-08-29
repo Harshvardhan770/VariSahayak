@@ -63,7 +63,7 @@ import com.varisahayak.core.permissions.AppPermissions
 import com.varisahayak.core.permissions.PermissionPermanentlyDeniedDialog
 import com.varisahayak.core.permissions.PermissionRationaleDialog
 import com.varisahayak.core.permissions.rememberPermissionController
-import com.varisahayak.domain.model.QrToken
+import com.varisahayak.domain.model.QrLocation
 
 private const val TAG = "QrScannerScreen"
 
@@ -75,9 +75,21 @@ private const val TAG = "QrScannerScreen"
  * the reason somebody does not get help. The same applies to the camera permission: deny
  * it and the manual field is still right there.
  */
+/**
+ * What a completed scan hands back to navigation.
+ *
+ * [location] is null when the sign could not be resolved — offline, or not yet cached.
+ * The token is still carried so the report remains fileable and is reconciled on sync.
+ */
+data class LocationScanResult(
+    val token: String,
+    val location: QrLocation?,
+)
+
 @Composable
 fun QrScannerScreen(
-    onTokenAccepted: (QrToken) -> Unit,
+    onReportEmergency: (LocationScanResult) -> Unit,
+    onReportFoundPerson: (LocationScanResult) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: QrScannerViewModel = hiltViewModel(),
 ) {
@@ -190,9 +202,13 @@ fun QrScannerScreen(
     uiState.outcome?.let { outcome ->
         ScanOutcomeDialog(
             outcome = outcome,
-            onContinue = { token ->
+            onReportEmergency = { result ->
                 viewModel.dismissOutcome()
-                onTokenAccepted(token)
+                onReportEmergency(result)
+            },
+            onReportFoundPerson = { result ->
+                viewModel.dismissOutcome()
+                onReportFoundPerson(result)
             },
             onDismiss = viewModel::dismissOutcome,
         )
@@ -317,39 +333,72 @@ private fun ManualEntryDialog(
 @Composable
 private fun ScanOutcomeDialog(
     outcome: ScanOutcome,
-    onContinue: (QrToken) -> Unit,
+    onReportEmergency: (LocationScanResult) -> Unit,
+    onReportFoundPerson: (LocationScanResult) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val token = when (outcome) {
-        is ScanOutcome.Resolved -> outcome.token
-        is ScanOutcome.ResolvedOffline -> outcome.token
+    // A resolved location and an unresolved token are both "continue" states. The second
+    // is not an error: the report is filed against the raw token and the location is
+    // attached on sync, because nothing about reporting an emergency may wait for a mast.
+    val result = when (outcome) {
+        is ScanOutcome.Resolved -> LocationScanResult(
+            token = outcome.location.token,
+            location = outcome.location,
+        )
+
+        is ScanOutcome.ResolvedOffline -> LocationScanResult(
+            token = outcome.token,
+            location = null,
+        )
+
         else -> null
     }
 
     val message = when (outcome) {
-        is ScanOutcome.Resolved -> outcome.subjectReference
-        is ScanOutcome.ResolvedOffline -> stringResource(R.string.qr_resolved_offline)
+        is ScanOutcome.Resolved ->
+            stringResource(R.string.qr_location_resolved, outcome.location.locationName)
+
+        is ScanOutcome.ResolvedOffline -> stringResource(R.string.qr_location_offline)
+        ScanOutcome.UnknownLocation -> stringResource(R.string.qr_location_unknown)
         ScanOutcome.NotRecognised -> stringResource(R.string.qr_not_recognised)
-        ScanOutcome.Malformed -> stringResource(R.string.qr_not_recognised)
+        ScanOutcome.Malformed -> stringResource(R.string.qr_location_malformed)
         ScanOutcome.ContainsPersonalData -> stringResource(R.string.qr_contains_personal_data)
     }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.sos_bridge_title)) },
-        text = { Text(message) },
+        title = { Text(stringResource(R.string.qr_location_scan)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(Dimens.SpaceSm)) {
+                Text(message)
+
+                // The scan establishes only *where*. What the volunteer does with that is
+                // a separate, explicit choice — a scan never files anything by itself.
+                if (result != null) {
+                    Text(
+                        text = stringResource(R.string.qr_location_choose_action),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+            }
+        },
         confirmButton = {
-            if (token != null) {
-                VariPrimaryButton(
-                    text = stringResource(R.string.sos_bridge_create),
-                    onClick = { onContinue(token) },
-                )
+            if (result != null) {
+                Column(verticalArrangement = Arrangement.spacedBy(Dimens.SpaceXs)) {
+                    VariPrimaryButton(
+                        text = stringResource(R.string.qr_action_report_emergency),
+                        onClick = { onReportEmergency(result) },
+                    )
+                    TextButton(onClick = { onReportFoundPerson(result) }) {
+                        Text(stringResource(R.string.lostfound_report_found))
+                    }
+                }
             } else {
                 TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_retry)) }
             }
         },
         dismissButton = {
-            if (token != null) {
+            if (result != null) {
                 TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
             }
         },

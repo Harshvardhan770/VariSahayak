@@ -295,4 +295,69 @@
     <string name="cd_walkie_active">Voice activity</string>
     <string name="cd_walkie_idle">Channel idle</string>
 
+
+    <!-- Notification copy. Rendered from these resources, never from the push payload:
+         a push lands on a lock screen in public and its contents must be non-sensitive
+         and non-attacker-controlled. -->
+    <string name="notification_sos_title">SOS raised</string>
+    <string name="notification_sos_body">Someone needs help now. Open to see where.</string>
+    <string name="notification_assignment_title">New assignment</string>
+    <string name="notification_assignment_body">An incident has been assigned to you.</string>
+    <string name="notification_escalation_title">Incident escalated</string>
+    <string name="notification_escalation_body">An incident needs attention. Open for details.</string>
+    <string name="notification_status_title">Incident updated</string>
+    <string name="notification_status_body">The status of an incident has changed.</string>
+    <string name="notification_announcement_title">Announcement</string>
+    <string name="notification_announcement_body">There is a new message for your team.</string>
+    <string name="notification_permission_rationale">Turn on notifications so you hear about an SOS or a new assignment without watching the screen.</string>
+    <string name="notification_permission_allow">Turn on notifications</string>
+
+    <!-- Plan 07: Lost & Found. Both sides of a separation are first-class. -->
+    <string name="lostfound_report_lost">Report lost</string>
+    <string name="lostfound_report_found">Found person</string>
+    <string name="lostfound_side_lost">Lost</string>
+    <string name="lostfound_side_found">Found</string>
+    <string name="lostfound_status_open">Open</string>
+    <string name="lostfound_status_matched">Possible match</string>
+    <string name="lostfound_status_reunited">Reunited</string>
+    <string name="lostfound_status_closed">Closed</string>
+    <string name="lostfound_empty">No reports yet.</string>
+    <string name="lostfound_pending_matches">%1$d possible match to review</string>
+    <string name="lostfound_review_matches">Review matches</string>
+    <string name="lostfound_age_approx">Approx %1$d years</string>
+    <string name="lostfound_with_custodian">With %1$s</string>
+    <string name="lostfound_at_location">At %1$s</string>
+    <string name="lostfound_field_title">Who or what is missing</string>
+    <string name="lostfound_field_name">Name, if known</string>
+    <string name="lostfound_field_age">Approximate age</string>
+    <string name="lostfound_field_gender">Gender</string>
+    <string name="lostfound_field_clothing">Clothing</string>
+    <string name="lostfound_field_physical">Physical description</string>
+    <string name="lostfound_field_language">Language</string>
+    <string name="lostfound_field_condition">Condition</string>
+    <string name="lostfound_field_guardian">Parent or guardian name</string>
+    <string name="lostfound_field_guardian_phone">Parent or guardian phone</string>
+    <string name="lostfound_field_notes">Anything else</string>
+    <string name="lostfound_photo_optional">A photo helps but is never required. You can add one later.</string>
+    <!-- Match review -->
+    <string name="match_title">Possible match</string>
+    <string name="match_why">Why this may be a match</string>
+    <string name="match_confidence_high">High confidence</string>
+    <string name="match_confidence_medium">Medium confidence</string>
+    <string name="match_confidence_low">Low confidence</string>
+    <string name="match_confirm">Confirm match</string>
+    <string name="match_reject">Not a match</string>
+    <string name="match_human_required">A volunteer must confirm before a case is closed.</string>
+    <string name="match_no_candidates">No matches to review.</string>
+    <string name="match_lost_side">Lost report</string>
+    <string name="match_found_side">Found report</string>
+    <!-- QR locations -->
+    <string name="qr_location_scan">Scan a location code</string>
+    <string name="qr_location_resolved">You are at %1$s</string>
+    <string name="qr_location_unknown">That location code was not recognised.</string>
+    <string name="qr_location_malformed">That code is damaged. Type it in instead.</string>
+    <string name="qr_location_offline">No connection. The report will use this code and resolve later.</string>
+    <string name="qr_location_manual_entry">Type the code</string>
+    <string name="qr_location_choose_action">What would you like to do here?</string>
+    <string name="qr_action_report_emergency">Report an emergency</string>
 </resources>

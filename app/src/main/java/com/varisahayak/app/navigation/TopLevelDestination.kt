@@ -9,6 +9,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.varisahayak.R
+import com.varisahayak.domain.model.Capabilities
 import com.varisahayak.domain.model.UserRole
 
 /**
@@ -31,17 +32,26 @@ enum class TopLevelDestination(
     ;
 
     companion object {
-        fun forRole(role: UserRole): List<TopLevelDestination> = when (role) {
-            UserRole.VOLUNTEER -> listOf(HOME, INCIDENTS, MAP, SCAN, PROFILE)
+        /**
+         * Derived from [Capabilities] rather than from the role directly, so the bottom
+         * bar and the screen contents can never disagree about what a role may do.
+         *
+         * Note this is about *prominence*, not permission: a responder can still reach
+         * the scanner from the incident detail screen, it simply is not one of their four
+         * most-used surfaces. Only [Capabilities.canScanQr] removes it entirely.
+         */
+        fun forRole(role: UserRole): List<TopLevelDestination> {
+            val capabilities = Capabilities.of(role)
 
-            // Responders triage and act on assigned work; they scan far less often.
-            UserRole.MEDICAL_RESPONDER,
-            UserRole.POLICE_RESPONDER,
-            UserRole.NGO_RESPONDER,
-            -> listOf(HOME, INCIDENTS, MAP, PROFILE)
-
-            UserRole.ORGANISER, UserRole.ADMINISTRATOR ->
-                listOf(HOME, INCIDENTS, MAP, PROFILE)
+            return buildList {
+                add(HOME)
+                add(INCIDENTS)
+                add(MAP)
+                // The scanner earns a permanent slot only for the volunteer, whose whole
+                // job on the route is meeting Varkaris who have no phone.
+                if (capabilities.canScanQr && !capabilities.canSeeAreaWideIncidents) add(SCAN)
+                add(PROFILE)
+            }
         }
 
         /** The start destination for a role, used once the profile resolves. */

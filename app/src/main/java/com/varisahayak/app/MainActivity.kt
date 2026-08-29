@@ -1,6 +1,7 @@
 package com.varisahayak.app
 
 import android.content.Context
+import android.content.Intent
 import android.graphics.Color.TRANSPARENT
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -15,7 +16,9 @@ import com.varisahayak.core.designsystem.VariSahayakTheme
 import com.varisahayak.core.designsystem.VariTheme
 import com.varisahayak.core.locale.AppLocale
 import com.varisahayak.core.locale.AppLocaleStore
+import com.varisahayak.feature.notifications.NotificationDeepLinkBus
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
 /**
  * Single activity host.
@@ -25,6 +28,9 @@ import dagger.hilt.android.AndroidEntryPoint
  */
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    @Inject
+    lateinit var deepLinkBus: NotificationDeepLinkBus
 
     /**
      * Applies the stored language before any resource is resolved.
@@ -47,6 +53,10 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.light(TRANSPARENT, TRANSPARENT),
         )
         super.onCreate(savedInstanceState)
+
+        // The cold-start half of the deep link: the tap that launched the process arrives
+        // here, long before the NavHost exists. The bus holds it until navigation is ready.
+        deepLinkBus.offer(intent)
 
         setContent {
             // Light, regardless of the device setting.
@@ -74,6 +84,18 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    /**
+     * The warm half of the deep link.
+     *
+     * With singleTask, a tap while the app is already running delivers the intent here
+     * rather than through `onCreate`. Both paths feed the same bus.
+     */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        deepLinkBus.offer(intent)
     }
 
     /**

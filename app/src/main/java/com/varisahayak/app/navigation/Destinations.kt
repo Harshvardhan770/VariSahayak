@@ -43,9 +43,17 @@ sealed interface Destination {
     @Serializable
     data class IncidentDetail(val clientId: String) : Destination
 
+    /**
+     * [qrLocationToken] is the fixed sign the report is filed against, and
+     * [qrLocationName] is carried alongside it so the form can name the place even when
+     * the token has not resolved yet.
+     */
     @Serializable
-    data class ReportIncident(val sosBridgeToken: String? = null, val isSos: Boolean = false) :
-        Destination
+    data class ReportIncident(
+        val qrLocationToken: String? = null,
+        val qrLocationName: String? = null,
+        val isSos: Boolean = false,
+    ) : Destination
 
     @Serializable
     data object IncidentMap : Destination
@@ -54,7 +62,16 @@ sealed interface Destination {
     data object QrScanner : Destination
 
     @Serializable
-    data object LostAndFound : Destination
+    data class LostAndFound(
+        val qrLocationToken: String? = null,
+        val qrLocationName: String? = null,
+        /** LOST or FOUND, so a scan can open the right form directly. */
+        val kind: String? = null,
+    ) : Destination
+
+    /** The protected match-review surface. Human confirmation lives here. */
+    @Serializable
+    data object MatchReview : Destination
 
     @Serializable
     data object Documentation : Destination

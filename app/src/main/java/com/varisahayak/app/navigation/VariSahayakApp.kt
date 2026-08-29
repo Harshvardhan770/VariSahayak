@@ -1,5 +1,13 @@
 package com.varisahayak.app.navigation
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -55,6 +63,7 @@ import com.varisahayak.feature.incidents.IncidentDetailScreen
 import com.varisahayak.feature.incidents.IncidentListScreen
 import com.varisahayak.feature.incidents.ReportIncidentScreen
 import com.varisahayak.feature.lostfound.LostFoundScreen
+import com.varisahayak.feature.lostfound.MatchReviewScreen
 import com.varisahayak.feature.map.IncidentMapScreen
 import com.varisahayak.feature.profile.ProfileScreen
 import com.varisahayak.feature.profile.ProfileViewModel
@@ -74,6 +83,30 @@ fun VariSahayakApp(
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
 
     val currentRoute = currentBackStackEntry?.destination?.route
+
+    // Android 13+ will not deliver a notification until POST_NOTIFICATIONS is granted, and
+    // FCM declares the permission without requesting it. Asked once the user is signed in
+    // rather than at first launch, so the prompt arrives when there is something to be
+    // notified about.
+    NotificationPermissionRequest(enabled = profile != null)
+
+    // A tapped notification names a server incident id; every route here is keyed by the
+    // device-generated client id. Resolve, then navigate, then clear — so a configuration
+    // change does not replay the tap and yank the user back.
+    val pendingNotification by viewModel.pendingNotification.collectAsState()
+    LaunchedEffect(pendingNotification, profile) {
+        val target = pendingNotification ?: return@LaunchedEffect
+        if (profile == null) return@LaunchedEffect
+
+        viewModel.resolveNotificationTarget(target.incidentServerId) { clientId ->
+            if (clientId != null) {
+                navController.navigate(Destination.IncidentDetail(clientId)) {
+                    launchSingleTop = true
+                }
+            }
+            viewModel.consumeNotification()
+        }
+    }
 
     // Radio visibility is a user preference for the session, not app state — it survives
     // rotation but is deliberately not persisted across launches.
@@ -309,7 +342,7 @@ private fun VariNavHost(
                 onNavigateToReport = { navController.navigate(Destination.ReportIncident()) },
                 onNavigateToScan = { navController.navigate(Destination.QrScanner) },
                 onNavigateToMap = { navController.navigate(Destination.IncidentMap) },
-                onNavigateToLostFound = { navController.navigate(Destination.LostAndFound) },
+                onNavigateToLostFound = { navController.navigate(Destination.LostAndFound()) },
                 onNavigateToDetail = { clientId ->
                     navController.navigate(Destination.IncidentDetail(clientId))
                 },
@@ -367,12 +400,25 @@ private fun VariNavHost(
         }
 
         composable<Destination.QrScanner> {
+            // A scan establishes only *where*. The volunteer then chooses what to do with
+            // that location, and both paths carry the token forward so the report is filed
+            // against the fixed sign rather than a phone fix in a crowd.
             QrScannerScreen(
-                onTokenAccepted = { token ->
+                onReportEmergency = { result ->
                     navController.navigate(
                         Destination.ReportIncident(
-                            sosBridgeToken = token.value,
+                            qrLocationToken = result.token,
+                            qrLocationName = result.location?.locationName,
                             isSos = true,
+                        ),
+                    )
+                },
+                onReportFoundPerson = { result ->
+                    navController.navigate(
+                        Destination.LostAndFound(
+                            qrLocationToken = result.token,
+                            qrLocationName = result.location?.locationName,
+                            kind = "FOUND",
                         ),
                     )
                 },
@@ -380,7 +426,13 @@ private fun VariNavHost(
         }
 
         composable<Destination.LostAndFound> {
-            LostFoundScreen()
+            LostFoundScreen(
+                onOpenMatches = { navController.navigate(Destination.MatchReview) },
+            )
+        }
+
+        composable<Destination.MatchReview> {
+            MatchReviewScreen()
         }
 
         composable<Destination.ReportIncident> {
@@ -430,5 +482,37 @@ private fun SplashScreen() {
             color = colors.textMuted,
             modifier = Modifier.padding(top = Dimens.SpaceSm),
         )
+    }
+}
+
+/**
+ * Requests POST_NOTIFICATIONS once, on Android 13+.
+ *
+ * A denial is not handled with a blocking dialog on purpose. Push is best-effort: the
+ * `notifications` table is the authoritative record and the incident list always shows the
+ * work, so a volunteer who says no still sees everything — they just have to look.
+ */
+@Composable
+private fun NotificationPermissionRequest(enabled: Boolean) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+
+    val context = LocalContext.current
+    var requested by rememberSaveable { mutableStateOf(false) }
+
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { /* Either way the app works. Nothing to do. */ },
+    )
+
+    LaunchedEffect(enabled, requested) {
+        if (!enabled || requested) return@LaunchedEffect
+
+        val granted = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.POST_NOTIFICATIONS,
+        ) == PackageManager.PERMISSION_GRANTED
+
+        requested = true
+        if (!granted) launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 }

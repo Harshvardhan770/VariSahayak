@@ -269,6 +269,11 @@ class IncidentRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun findClientIdByServerId(serverId: String): String? =
+        withContext(dispatchers.io) {
+            incidentDao.getByServerId(serverId)?.clientId
+        }
+
     private suspend fun recordEvent(
         incidentClientId: String,
         type: IncidentEventType,

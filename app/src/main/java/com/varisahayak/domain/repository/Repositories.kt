@@ -129,6 +129,16 @@ interface IncidentRepository {
 
     /** Pulls server state and reconciles it into the local store. */
     suspend fun refreshFromServer(): Outcome<Unit>
+
+    /**
+     * Resolves a server incident id to the local client id the UI navigates by.
+     *
+     * Needed for notification deep links: a push is composed server-side and can only name
+     * the server id, while every route in the app is keyed by the device-generated client
+     * id. Returns null when the incident has not reached this device yet — the caller
+     * should sync and try again rather than navigate to nothing.
+     */
+    suspend fun findClientIdByServerId(serverId: String): String?
 }
 
 data class SyncSummary(
@@ -142,6 +152,21 @@ data class SyncSummary(
 interface ResponderRepository {
     fun observeAvailable(): Flow<List<Responder>>
 
+    /**
+     * The signed-in responder's own availability, from the local cache.
+     *
+     * Emits null for anyone who is not a responder, and for a responder whose roster row
+     * has not been fetched yet. The control renders from this so it is correct offline.
+     */
+    fun observeOwnAvailability(): Flow<ResponderAvailability?>
+
+    /**
+     * Publishes a new availability state.
+     *
+     * Writes locally first so the toggle responds immediately, then pushes. A failed push
+     * leaves the local value in place rather than snapping the control back — going off
+     * shift must not silently fail to a state the responder thinks they left.
+     */
     suspend fun setAvailability(availability: ResponderAvailability): Outcome<Unit>
 
     suspend fun reportLocation(location: GeoPoint): Outcome<Unit>

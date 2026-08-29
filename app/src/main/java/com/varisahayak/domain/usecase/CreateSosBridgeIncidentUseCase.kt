@@ -5,34 +5,39 @@ import com.varisahayak.core.common.Outcome
 import com.varisahayak.domain.model.GeoPoint
 import com.varisahayak.domain.model.Incident
 import com.varisahayak.domain.model.IncidentCategory
-import com.varisahayak.domain.model.QrToken
+import com.varisahayak.domain.model.QrLocation
 import com.varisahayak.domain.repository.IncidentRepository
-import com.varisahayak.domain.repository.QrRepository
+import com.varisahayak.domain.repository.QrLocationRepository
 import javax.inject.Inject
 
 /**
- * Raises a help request for a Varkari who has no smartphone.
+ * Raises an emergency against a fixed QR location on the route.
+ *
+ * The QR establishes *where*, never *who*. A volunteer scans the sign at a water point and
+ * reports that somebody near it needs help; the sign contributes an exact, known
+ * coordinate that a phone fix in a crowd cannot match.
  *
  * Three properties make this correct rather than merely working:
  *
  * 1. **It reuses the ordinary incident pipeline.** The record goes through the same
  *    offline-first path and the same prioritisation as any other report. There is no
- *    parallel SOS Bridge pipeline to drift out of sync with the main one.
+ *    parallel SOS pipeline to drift out of step with the main one.
  * 2. **It never blocks on the network.** The incident is created locally first; the audit
- *    record is queued afterwards and its failure cannot undo the request. Somebody
- *    standing in front of a volunteer needing help must not depend on a working mast.
- * 3. **It carries no personal data.** Only the opaque token is stored. Whatever the token
- *    refers to is resolved server-side for whoever is authorised to see it.
+ *    record is queued afterwards and its failure cannot undo the request.
+ * 3. **It keeps the two locations apart.** The sign's coordinate and the device's fix are
+ *    different facts — the person needing help is *near* the sign, not standing on it —
+ *    and conflating them would send a responder to the wrong side of a crowd.
  */
 class CreateSosBridgeIncidentUseCase @Inject constructor(
     private val incidentRepository: IncidentRepository,
-    private val qrRepository: QrRepository,
+    private val qrLocationRepository: QrLocationRepository,
 ) {
 
     suspend operator fun invoke(
-        token: QrToken,
+        location: QrLocation?,
+        rawToken: String?,
         description: String,
-        location: GeoPoint?,
+        deviceLocation: GeoPoint?,
         category: IncidentCategory = IncidentCategory.OTHER,
     ): Outcome<Incident> {
         if (description.isBlank()) {
@@ -41,26 +46,43 @@ class CreateSosBridgeIncidentUseCase @Inject constructor(
             )
         }
 
+        val token = location?.token ?: rawToken
+
         val created = incidentRepository.createIncident(
             category = category,
-            description = description,
-            location = location,
+            // The device's own fix is preferred when there is one: the sign is a fallback
+            // reference, and a responder wants to walk to the person, not to the post.
+            location = deviceLocation ?: location?.point,
+            description = buildDescription(description, location),
             photoLocalPath = null,
-            // Deliberately null. An SOS Bridge request carries the token and nothing that
-            // identifies the person it is raised for.
             affectedPersonNote = null,
             // Marks this as an explicit SOS, which pins it to the critical band in
             // PriorityEngine regardless of category or any AI suggestion.
             isSos = true,
-            sosBridgeToken = token.value,
+            sosBridgeToken = token,
         )
 
-        // The audit row is best-effort and intentionally cannot fail the request. It is
-        // queued in the outbox, so a failure here means "not yet recorded", not "lost".
-        if (created is Outcome.Success) {
-            qrRepository.recordResolution(token, created.data.clientId)
+        // Best-effort audit, and deliberately unable to fail the request. A missing audit
+        // row is a gap in the trail; a blocked report is somebody not getting help.
+        if (created is Outcome.Success && token != null) {
+            qrLocationRepository.recordScan(
+                token = token,
+                deviceLocation = deviceLocation,
+                incidentClientId = created.data.clientId,
+            )
         }
 
         return created
     }
+
+    /**
+     * Names the sign in the description so a responder reading the incident knows which
+     * physical point to head for, even before the map loads.
+     */
+    private fun buildDescription(description: String, location: QrLocation?): String =
+        if (location == null) {
+            description.trim()
+        } else {
+            "${description.trim()} (near ${location.locationName})"
+        }
 }

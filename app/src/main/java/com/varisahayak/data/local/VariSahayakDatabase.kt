@@ -5,7 +5,10 @@ import androidx.room.RoomDatabase
 import com.varisahayak.data.local.dao.DocumentDao
 import com.varisahayak.data.local.dao.IncidentDao
 import com.varisahayak.data.local.dao.IncidentEventDao
+import com.varisahayak.data.local.dao.CustodyDao
 import com.varisahayak.data.local.dao.LostFoundDao
+import com.varisahayak.data.local.dao.LostFoundMatchDao
+import com.varisahayak.data.local.dao.QrLocationDao
 import com.varisahayak.data.local.dao.MessageDao
 import com.varisahayak.data.local.dao.NotificationDao
 import com.varisahayak.data.local.dao.OutboxDao
@@ -14,7 +17,10 @@ import com.varisahayak.data.local.dao.ResponderDao
 import com.varisahayak.data.local.entity.DocumentEntity
 import com.varisahayak.data.local.entity.IncidentEntity
 import com.varisahayak.data.local.entity.IncidentEventEntity
+import com.varisahayak.data.local.entity.CustodyEntity
 import com.varisahayak.data.local.entity.LostFoundEntity
+import com.varisahayak.data.local.entity.LostFoundMatchEntity
+import com.varisahayak.data.local.entity.QrLocationEntity
 import com.varisahayak.data.local.entity.MessageEntity
 import com.varisahayak.data.local.entity.NotificationEntity
 import com.varisahayak.data.local.entity.OutboxEntity
@@ -42,8 +48,11 @@ import com.varisahayak.data.local.entity.ResponderEntity
         NotificationEntity::class,
         MessageEntity::class,
         LostFoundEntity::class,
+        CustodyEntity::class,
+        LostFoundMatchEntity::class,
+        QrLocationEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 abstract class VariSahayakDatabase : RoomDatabase() {
@@ -56,6 +65,9 @@ abstract class VariSahayakDatabase : RoomDatabase() {
     abstract fun notificationDao(): NotificationDao
     abstract fun messageDao(): MessageDao
     abstract fun lostFoundDao(): LostFoundDao
+    abstract fun custodyDao(): CustodyDao
+    abstract fun lostFoundMatchDao(): LostFoundMatchDao
+    abstract fun qrLocationDao(): QrLocationDao
 
     companion object {
         const val NAME = "varisahayak.db"

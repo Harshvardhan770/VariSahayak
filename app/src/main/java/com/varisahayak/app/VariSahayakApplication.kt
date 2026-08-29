@@ -4,9 +4,11 @@ import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.work.Configuration
 import androidx.hilt.work.HiltWorkerFactory
 import com.varisahayak.R
+import com.varisahayak.data.realtime.RealtimeCoordinator
 import com.varisahayak.data.sync.SyncScheduler
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
@@ -27,6 +29,9 @@ class VariSahayakApplication : Application(), Configuration.Provider {
     @Inject
     lateinit var syncScheduler: SyncScheduler
 
+    @Inject
+    lateinit var realtimeCoordinator: RealtimeCoordinator
+
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
             .setWorkerFactory(workerFactory)
@@ -39,6 +44,9 @@ class VariSahayakApplication : Application(), Configuration.Provider {
         // which left every read-only role — responders, organisers — looking at a
         // permanently empty queue.
         syncScheduler.ensurePeriodicSync()
+        // Follows the session on its own: channels open on sign-in and close on sign-out,
+        // so starting it here costs nothing while signed out.
+        realtimeCoordinator.start()
     }
 
     /**
@@ -82,6 +90,10 @@ class VariSahayakApplication : Application(), Configuration.Provider {
         manager.createNotificationChannels(channels)
     }
 
+    // The caller returns early below API 26, but lint cannot follow that across a
+    // function boundary. Annotated rather than re-guarded: a second runtime check here
+    // would imply this is reachable on older devices, which it is not.
+    @RequiresApi(Build.VERSION_CODES.O)
     private fun channel(
         id: String,
         name: String,

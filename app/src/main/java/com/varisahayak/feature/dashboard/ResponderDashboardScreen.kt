@@ -2,16 +2,29 @@ package com.varisahayak.feature.dashboard
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.DoNotDisturbOn
+import androidx.compose.material.icons.filled.NightsStay
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import com.varisahayak.R
 import com.varisahayak.core.designsystem.Dimens
 import com.varisahayak.core.designsystem.VariTheme
@@ -21,6 +34,7 @@ import com.varisahayak.core.designsystem.component.LoadingState
 import com.varisahayak.core.designsystem.component.OfflineQueuePill
 import com.varisahayak.core.utils.rememberNowMillis
 import com.varisahayak.domain.model.IncidentStatus
+import com.varisahayak.domain.model.ResponderAvailability
 
 /**
  * The responder's work queue.
@@ -37,6 +51,7 @@ fun ResponderDashboardScreen(
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val availability by viewModel.availability.collectAsState()
     val nowMillis by rememberNowMillis()
 
     if (uiState.isLoading && uiState.assignedIncidents.isEmpty()) {
@@ -65,6 +80,19 @@ fun ResponderDashboardScreen(
                     unsyncedCount = uiState.unsyncedCount,
                     isOnline = !uiState.isOffline,
                     onRetry = viewModel::retrySync,
+                )
+            }
+        }
+
+        // Availability gates dispatch entirely: the server-side matcher filters on it
+        // before it scores anybody, so a responder who never sets this is never matched.
+        // It sits above the assignment list because it is the thing that makes the rest
+        // of the screen fill up.
+        if (uiState.capabilities.canSetOwnAvailability) {
+            item {
+                AvailabilityControl(
+                    current = availability,
+                    onChange = viewModel::setAvailability,
                 )
             }
         }
@@ -141,4 +169,58 @@ private fun SectionHeading(text: String) {
         style = MaterialTheme.typography.titleMedium,
         color = VariTheme.colors.textSecondary,
     )
+}
+
+/**
+ * Shift state as three explicit choices rather than an on/off switch.
+ *
+ * BUSY and OFF_SHIFT both remove a responder from dispatch, but they mean different
+ * things to an organiser reading the roster — mid-incident versus gone home — and
+ * collapsing them into one toggle would throw that away.
+ *
+ * Each chip pairs its colour with an icon and a label: priority and status are never
+ * communicated by colour alone anywhere in this app, and shift state is no exception.
+ */
+@Composable
+private fun AvailabilityControl(
+    current: ResponderAvailability?,
+    onChange: (ResponderAvailability) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceSm),
+    ) {
+        AvailabilityOption.entries.forEach { option ->
+            val selected = current == option.state
+            FilterChip(
+                selected = selected,
+                onClick = { onChange(option.state) },
+                label = { Text(stringResource(option.labelRes)) },
+                leadingIcon = { Icon(option.icon, contentDescription = null) },
+                shape = FilterChipDefaults.shape,
+                modifier = Modifier
+                    // 48dp minimum touch target: this is tapped with gloves on, in
+                    // sunlight, while walking.
+                    .defaultMinSize(minHeight = Dimens.MinTouchTarget)
+                    .semantics {
+                        stateDescription = if (selected) "Selected" else "Not selected"
+                    },
+            )
+        }
+    }
+}
+
+private enum class AvailabilityOption(
+    val state: ResponderAvailability,
+    val labelRes: Int,
+    val icon: ImageVector,
+) {
+    AVAILABLE(ResponderAvailability.AVAILABLE, R.string.dashboard_available, Icons.Filled.Bolt),
+    BUSY(ResponderAvailability.BUSY, R.string.dashboard_busy, Icons.Filled.DoNotDisturbOn),
+    OFF_SHIFT(
+        ResponderAvailability.OFF_SHIFT,
+        R.string.dashboard_off_shift,
+        Icons.Filled.NightsStay,
+    ),
 }

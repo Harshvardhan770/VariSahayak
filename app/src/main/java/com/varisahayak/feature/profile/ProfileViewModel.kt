@@ -6,6 +6,7 @@ import com.varisahayak.core.common.AppError
 import com.varisahayak.core.common.Outcome
 import com.varisahayak.domain.model.Profile
 import com.varisahayak.domain.repository.AuthRepository
+import com.varisahayak.domain.repository.DeviceTokenRepository
 import com.varisahayak.domain.repository.IncidentRepository
 import com.varisahayak.domain.repository.ProfileRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -29,6 +30,7 @@ class ProfileViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val profileRepository: ProfileRepository,
     private val incidentRepository: IncidentRepository,
+    private val deviceTokenRepository: DeviceTokenRepository,
 ) : ViewModel() {
 
     private val _isLoading = MutableStateFlow(false)
@@ -56,6 +58,10 @@ class ProfileViewModel @Inject constructor(
         viewModelScope.launch {
             _isLoading.value = true
             try {
+                // Before signOut, not after: removing the token needs the session that is
+                // about to be destroyed. Skipping this leaves a shared device delivering
+                // the previous volunteer's assignments to whoever picks it up next.
+                deviceTokenRepository.unregister()
                 authRepository.signOut()
                 profileRepository.clearCache()
             } catch (e: Exception) {

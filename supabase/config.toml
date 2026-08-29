@@ -411,3 +411,30 @@ enabled = true
 # declarative_schema_path = "./schemas"
 # JSON string passed through to pg-delta SQL formatting.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":80,\"commaStyle\":\"trailing\"}"
+
+# ---------------------------------------------------------------------------
+# Edge Functions
+# ---------------------------------------------------------------------------
+# verify_jwt is true by default; it is declared explicitly because the whole access model
+# for this function rests on it. classify-incident uses auth: 'user', so an unauthenticated
+# call must be rejected by the platform before any code runs and before the Gemini key is
+# ever read.
+[functions.classify-incident]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/classify-incident/index.ts"
+
+# Public QR resolver. The ONLY unauthenticated function in the system: a pilgrim standing at
+# a water point has no account and must not need one to call for help. Its safety rests on
+# resolve_public_location(), which projects only the columns marked public.
+[functions.resolve-location]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/resolve-location/index.ts"
+
+# Bridges Lost & Found photographs to the Python OpenCV/DeepFace service. Authenticated:
+# only a signed-in volunteer may submit a photo, and RLS decides which reports they may touch.
+[functions.process-face]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/process-face/index.ts"

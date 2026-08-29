@@ -218,7 +218,7 @@ as $fn$
     select r.wire_name
       from public.profiles p
       join public.roles r on r.id = p.role_id
-     where p.id = auth.uid();
+     where p.id = (select auth.uid());
 $fn$;
 
 create or replace function public.is_responder()
@@ -241,7 +241,7 @@ stable
 security definer
 set search_path = public
 as $fn$
-    select organisation_id from public.profiles where id = auth.uid();
+    select organisation_id from public.profiles where id = (select auth.uid());
 $fn$;
 
 -- ---------------------------------------------------------------------------

@@ -39,6 +39,14 @@ class SyncIncidentsWorker @AssistedInject constructor(
             incidentRepository.refreshFromServer()
         }
 
+        // Pull Lost & Found too, and unconditionally.
+        //
+        // Pushing alone is not enough: server-side face processing runs after a report
+        // reaches the database, and the candidate matches it raises exist only there until
+        // they are fetched. Without this, a volunteer who filed a Found Person report
+        // offline would sync it successfully and never learn that it matched somebody.
+        lostFoundRepository.refreshFromServer()
+
         val incidentsFailed = (incidents as? Outcome.Success)?.data?.hasFailures ?: true
         val lostFoundFailed = lostFound is Outcome.Failure
 

@@ -172,20 +172,33 @@ class FusedLocationProvider @Inject constructor(
             .setMaxUpdateAgeMillis(LocationDefaults.LAST_KNOWN_MAX_AGE_MILLIS)
             .build()
 
-        client.getCurrentLocation(request, tokenSource.token)
-            .addOnSuccessListener { location -> continuation.resume(location) }
-            .addOnFailureListener { continuation.resume(null) }
-            .addOnCanceledListener { continuation.resume(null) }
+        // Handled rather than suppressed. The permission can genuinely be revoked while
+        // the app is running — Android 12+ allows it straight from the notification shade
+        // — so this throw is real, not theoretical. Degrading to "no fix" is what the rest
+        // of the app already expects: a location enriches a report, it never gates one.
+        try {
+            client.getCurrentLocation(request, tokenSource.token)
+                .addOnSuccessListener { location -> continuation.resume(location) }
+                .addOnFailureListener { continuation.resume(null) }
+                .addOnCanceledListener { continuation.resume(null) }
+        } catch (denied: SecurityException) {
+            continuation.resume(null)
+        }
 
         continuation.invokeOnCancellation { tokenSource.cancel() }
     }
 
     private suspend fun requestLastLocation(): Location? =
         suspendCancellableCoroutine { continuation ->
-            client.lastLocation
-                .addOnSuccessListener { location -> continuation.resume(location) }
-                .addOnFailureListener { continuation.resume(null) }
-                .addOnCanceledListener { continuation.resume(null) }
+            // Same revocation race as requestCurrentLocation.
+            try {
+                client.lastLocation
+                    .addOnSuccessListener { location -> continuation.resume(location) }
+                    .addOnFailureListener { continuation.resume(null) }
+                    .addOnCanceledListener { continuation.resume(null) }
+            } catch (denied: SecurityException) {
+                continuation.resume(null)
+            }
         }
 
     private fun hasPermission(permission: String): Boolean =
