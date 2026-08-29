@@ -22,6 +22,7 @@ import com.varisahayak.app.MainViewModel
 import com.varisahayak.domain.repository.AuthState
 import com.varisahayak.feature.auth.SignInScreen
 import com.varisahayak.feature.auth.SignInViewModel
+import com.varisahayak.feature.map.IncidentMapScreen
 
 /**
  * Main application entry point for Compose.
@@ -95,8 +96,17 @@ fun VariSahayakApp(
             composable<Destination.IncidentList> {
                 PlaceholderScreen(title = stringResource(R.string.nav_incidents))
             }
+            // Placeholder until Phase 4 builds the detail screen. It must stay registered:
+            // the map taps through to this route, and an unregistered route throws.
+            composable<Destination.IncidentDetail> {
+                PlaceholderScreen(title = stringResource(R.string.incident_detail_title))
+            }
             composable<Destination.IncidentMap> {
-                PlaceholderScreen(title = stringResource(R.string.nav_map))
+                IncidentMapScreen(
+                    onIncidentSelected = { clientId ->
+                        navController.navigate(Destination.IncidentDetail(clientId))
+                    },
+                )
             }
             composable<Destination.QrScanner> {
                 PlaceholderScreen(title = stringResource(R.string.nav_scan))
