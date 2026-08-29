@@ -1,8 +1,0 @@
-com.varisahayak.app-pngs-0 D:\VARITHON\HACKATHON BUILD\VariSahayak\app\build\generated\res\pngs\debug
-com.varisahayak.app-updated_navigation_xml-1 D:\VARITHON\HACKATHON BUILD\VariSahayak\app\build\generated\updated_navigation_xml\debug
-com.varisahayak.app-packageDebugResources-2 D:\VARITHON\HACKATHON BUILD\VariSahayak\app\build\intermediates\incremental\debug\packageDebugResources\merged.dir
-com.varisahayak.app-packageDebugResources-3 D:\VARITHON\HACKATHON BUILD\VariSahayak\app\build\intermediates\incremental\debug\packageDebugResources\stripped.dir
-com.varisahayak.app-debug-4 D:\VARITHON\HACKATHON BUILD\VariSahayak\app\build\intermediates\merged_res\debug\mergeDebugResources
-com.varisahayak.app-debug-5 D:\VARITHON\HACKATHON BUILD\VariSahayak\app\src\debug\res
-com.varisahayak.app-main-6 D:\VARITHON\HACKATHON BUILD\VariSahayak\app\src\main\res
-gradleHome-0 C:\Users\advbh\.gradle

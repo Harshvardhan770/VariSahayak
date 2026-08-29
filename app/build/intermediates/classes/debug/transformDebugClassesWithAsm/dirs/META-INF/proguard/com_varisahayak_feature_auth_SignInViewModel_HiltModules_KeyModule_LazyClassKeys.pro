@@ -1,1 +1,0 @@
--keep,allowobfuscation,allowshrinking class com.varisahayak.feature.auth.SignInViewModel
