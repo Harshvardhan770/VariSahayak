@@ -5,21 +5,29 @@ import com.varisahayak.core.common.Clock
 import com.varisahayak.core.common.DispatcherProvider
 import com.varisahayak.core.common.Outcome
 import com.varisahayak.data.local.dao.IncidentDao
+import com.varisahayak.data.local.dao.IncidentEventDao
 import com.varisahayak.data.local.entity.IncidentEntity
+import com.varisahayak.data.local.entity.IncidentEventEntity
+import com.varisahayak.data.local.entity.IncidentEventType
 import com.varisahayak.data.local.entity.toDomain
 import com.varisahayak.data.remote.dto.IncidentDto
+import com.varisahayak.data.remote.dto.toEntity
 import com.varisahayak.data.remote.dto.toUpsertDto
+import com.varisahayak.data.sync.SyncScheduler
 import com.varisahayak.domain.model.GeoPoint
 import com.varisahayak.domain.model.Incident
 import com.varisahayak.domain.model.IncidentCategory
-import com.varisahayak.domain.model.IncidentPriority
+import com.varisahayak.domain.model.IncidentStateMachine
 import com.varisahayak.domain.model.IncidentStatus
 import com.varisahayak.domain.model.SyncState
 import com.varisahayak.domain.repository.IncidentRepository
 import com.varisahayak.domain.repository.SyncSummary
+import com.varisahayak.domain.usecase.PriorityEngine
+import com.varisahayak.domain.usecase.PriorityInput
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.from
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
@@ -32,6 +40,9 @@ import javax.inject.Singleton
 class IncidentRepositoryImpl @Inject constructor(
     private val supabase: SupabaseClient,
     private val incidentDao: IncidentDao,
+    private val incidentEventDao: IncidentEventDao,
+    private val priorityEngine: PriorityEngine,
+    private val syncScheduler: SyncScheduler,
     private val dispatchers: DispatcherProvider,
     private val clock: Clock,
 ) : IncidentRepository {
@@ -51,9 +62,14 @@ class IncidentRepositoryImpl @Inject constructor(
     override fun observeById(clientId: String): Flow<Incident?> =
         incidentDao.observeByClientId(clientId).map { it?.toDomain() }
 
-    override fun observeUnsyncedCount(): Flow<Int> =
-        incidentDao.observeUnsyncedCount()
+    override fun observeUnsyncedCount(): Flow<Int> = incidentDao.observeUnsyncedCount()
 
+    /**
+     * Creates an incident locally and returns immediately.
+     *
+     * Never touches the network. Validate, write to Room, enqueue sync, return — so this
+     * succeeds with no connectivity and the caller can show the incident at once.
+     */
     override suspend fun createIncident(
         category: IncidentCategory,
         description: String,
@@ -63,14 +79,26 @@ class IncidentRepositoryImpl @Inject constructor(
         isSos: Boolean,
         sosBridgeToken: String?,
     ): Outcome<Incident> = withContext(dispatchers.io) {
+        if (description.isBlank()) {
+            return@withContext Outcome.Failure(
+                AppError.Validation(field = "description", message = "Add a short description."),
+            )
+        }
+
         val reporterId = supabase.auth.currentUserOrNull()?.id
             ?: return@withContext Outcome.Failure(AppError.Unauthorised())
+
+        // Prioritisation runs on-device and offline. An SOS is pinned to CRITICAL here,
+        // before any network or AI involvement — that is the whole point of the rule.
+        val decision = priorityEngine.prioritise(
+            PriorityInput(category = category, isSos = isSos),
+        )
 
         val now = clock.nowEpochMillis()
         val entity = IncidentEntity(
             clientId = UUID.randomUUID().toString(),
             category = category.wireName,
-            description = description,
+            description = description.trim(),
             latitude = location?.latitude,
             longitude = location?.longitude,
             locationAccuracyMeters = location?.accuracyMeters,
@@ -79,8 +107,10 @@ class IncidentRepositoryImpl @Inject constructor(
             reportedAtEpochMillis = now,
             photoLocalPath = photoLocalPath,
             affectedPersonNote = affectedPersonNote,
-            status = IncidentStatus.REPORTED.wireName,
-            priority = IncidentPriority.MEDIUM.wireName, // Default priority
+            // PENDING_SYNC until the server accepts it; the state machine promotes it to
+            // REPORTED on reconciliation.
+            status = IncidentStatus.PENDING_SYNC.wireName,
+            priority = decision.priority.wireName,
             syncState = SyncState.PENDING.name,
             isSos = isSos,
             sosBridgeToken = sosBridgeToken,
@@ -88,51 +118,121 @@ class IncidentRepositoryImpl @Inject constructor(
         )
 
         incidentDao.upsert(entity)
+
+        recordEvent(
+            incidentClientId = entity.clientId,
+            type = IncidentEventType.CREATED,
+            actorId = reporterId,
+            toValue = entity.status,
+            note = "priority=${decision.priority.wireName} basis=${decision.basis}",
+            at = now,
+        )
+
+        syncScheduler.requestSync()
         Outcome.Success(entity.toDomain())
     }
 
+    /**
+     * Applies a status change through [IncidentStateMachine].
+     *
+     * An illegal transition is refused rather than written. A stale realtime frame or a
+     * double tap must not be able to move a resolved incident back to reported.
+     */
     override suspend fun updateStatus(
         clientId: String,
         newStatus: IncidentStatus,
         note: String?,
     ): Outcome<Incident> = withContext(dispatchers.io) {
-        val now = clock.nowEpochMillis()
-        incidentDao.setStatus(clientId, newStatus.wireName, now)
-        incidentDao.setSyncState(clientId, SyncState.PENDING.name)
-        
-        val updated = incidentDao.getByClientId(clientId)
-        if (updated != null) {
-            Outcome.Success(updated.toDomain())
-        } else {
-            Outcome.Failure(AppError.Validation(message = "Incident not found"))
+        val existing = incidentDao.getByClientId(clientId)
+            ?: return@withContext Outcome.Failure(AppError.NotFound())
+
+        val current = IncidentStatus.fromWire(existing.status)
+
+        when (val result = IncidentStateMachine.transition(current, newStatus)) {
+            is IncidentStateMachine.TransitionResult.Rejected -> {
+                return@withContext Outcome.Failure(
+                    AppError.Validation(
+                        field = "status",
+                        message = rejectionMessage(result),
+                    ),
+                )
+            }
+
+            is IncidentStateMachine.TransitionResult.Accepted -> {
+                val now = clock.nowEpochMillis()
+                incidentDao.setStatus(clientId, result.status.wireName, now)
+                incidentDao.setSyncState(clientId, SyncState.PENDING.name)
+
+                recordEvent(
+                    incidentClientId = clientId,
+                    type = IncidentEventType.STATUS_CHANGED,
+                    actorId = supabase.auth.currentUserOrNull()?.id,
+                    fromValue = current.wireName,
+                    toValue = result.status.wireName,
+                    note = note,
+                    at = now,
+                )
+
+                syncScheduler.requestSync()
+
+                val updated = incidentDao.getByClientId(clientId)
+                    ?: return@withContext Outcome.Failure(AppError.NotFound())
+                Outcome.Success(updated.toDomain())
+            }
         }
     }
 
+    /**
+     * Drains the pending queue.
+     *
+     * Uploads use upsert on `client_id`, which is what makes a retry a no-op instead of a
+     * duplicate incident. A failure marks the record FAILED and leaves it in place — it
+     * is retried, never discarded.
+     */
     override suspend fun syncPending(): Outcome<SyncSummary> = withContext(dispatchers.io) {
         val pending = incidentDao.getPendingSync()
+        if (pending.isEmpty()) {
+            return@withContext Outcome.Success(SyncSummary(0, 0, 0))
+        }
+
         var succeeded = 0
         var failed = 0
 
         pending.forEach { entity ->
             try {
-                val reportedAtIso = Instant.ofEpochMilli(entity.reportedAtEpochMillis).toString()
-                val dto = entity.toUpsertDto(reportedAtIso)
+                incidentDao.markSyncAttempt(
+                    clientId = entity.clientId,
+                    syncState = SyncState.SYNCING.name,
+                    attemptedAt = clock.nowEpochMillis(),
+                )
 
+                val reportedAtIso = Instant.ofEpochMilli(entity.reportedAtEpochMillis).toString()
                 val saved = supabase.from("incidents")
-                    .upsert(dto) {
+                    .upsert(entity.toUpsertDto(reportedAtIso)) {
                         onConflict = "client_id"
+                        // Required: returning defaults to Minimal, so without this the
+                        // server row — and its id — never comes back.
                         select()
                     }
                     .decodeSingle<IncidentDto>()
 
+                val serverId = saved.id
+                if (serverId.isNullOrBlank()) {
+                    // Never write a blank serverId: the column carries a unique index, so
+                    // a second blank would collide and corrupt an unrelated record.
+                    throw IllegalStateException("Server accepted the incident but returned no id")
+                }
+
                 incidentDao.markSynced(
                     clientId = entity.clientId,
-                    serverId = saved.id ?: "",
+                    serverId = serverId,
                     status = saved.status,
                     updatedAt = clock.nowEpochMillis(),
                 )
                 succeeded++
-            } catch (e: Exception) {
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (error: Exception) {
                 failed++
                 incidentDao.markSyncAttempt(
                     clientId = entity.clientId,
@@ -142,23 +242,67 @@ class IncidentRepositoryImpl @Inject constructor(
             }
         }
 
-        Outcome.Success(SyncSummary(attempted = pending.size, succeeded = succeeded, failed = failed))
+        Outcome.Success(SyncSummary(pending.size, succeeded, failed))
     }
 
+    /**
+     * Pulls server state and merges it in.
+     *
+     * Reconciliation is delegated to the DAO, which leaves records that are still awaiting
+     * sync untouched — the local copy is the newer truth until the server has accepted it.
+     */
     override suspend fun refreshFromServer(): Outcome<Unit> = withContext(dispatchers.io) {
         try {
-            val remoteIncidents = supabase.from("incidents")
+            val remote = supabase.from("incidents")
                 .select()
                 .decodeList<IncidentDto>()
-            
-            // This is a simplified refresh. A real one might use a more complex reconciliation.
-            // For now, we'll just upsert what we get.
-            // Note: IncidentDao has reconcileFromServer which is better but expects IncidentEntity.
-            // We should ideally convert DTOs to Entities and use that.
-            
+
+            remote.forEach { dto ->
+                incidentDao.reconcileFromServer(dto.toEntity(clock.nowEpochMillis()))
+            }
+
             Outcome.Success(Unit)
-        } catch (e: Exception) {
-            Outcome.Failure(AppError.Network(cause = e))
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (error: Exception) {
+            Outcome.Failure(AppError.Network(cause = error))
         }
+    }
+
+    private suspend fun recordEvent(
+        incidentClientId: String,
+        type: IncidentEventType,
+        actorId: String?,
+        fromValue: String? = null,
+        toValue: String? = null,
+        note: String? = null,
+        at: Long,
+    ) {
+        incidentEventDao.upsert(
+            IncidentEventEntity(
+                eventId = UUID.randomUUID().toString(),
+                incidentClientId = incidentClientId,
+                type = type.name,
+                actorId = actorId,
+                fromValue = fromValue,
+                toValue = toValue,
+                note = note,
+                occurredAtEpochMillis = at,
+                synced = false,
+            ),
+        )
+    }
+
+    private fun rejectionMessage(
+        rejection: IncidentStateMachine.TransitionResult.Rejected,
+    ): String = when (rejection.reason) {
+        IncidentStateMachine.Reason.NO_CHANGE ->
+            "This incident is already in that state."
+
+        IncidentStateMachine.Reason.SOURCE_TERMINAL ->
+            "This incident is already closed and cannot be changed."
+
+        IncidentStateMachine.Reason.NOT_PERMITTED ->
+            "That is not a valid next step for this incident."
     }
 }

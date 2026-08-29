@@ -17,6 +17,9 @@ sealed interface Destination {
     data object SignIn : Destination
 
     @Serializable
+    data object ForgotPassword : Destination
+
+    @Serializable
     data object SignUp : Destination
 
     // --- volunteer / responder ---

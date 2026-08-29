@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.varisahayak.core.common.AppError
 import com.varisahayak.core.common.Outcome
+import com.varisahayak.core.location.LocationProvider
 import com.varisahayak.domain.model.GeoPoint
 import com.varisahayak.domain.model.Incident
 import com.varisahayak.domain.model.IncidentCategory
@@ -40,6 +41,7 @@ class DashboardViewModel @Inject constructor(
     private val profileRepository: ProfileRepository,
     private val incidentRepository: IncidentRepository,
     private val responderRepository: ResponderRepository,
+    private val locationProvider: LocationProvider,
 ) : ViewModel() {
 
     private val _isLoading = MutableStateFlow(false)
@@ -76,10 +78,15 @@ class DashboardViewModel @Inject constructor(
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
+            // An SOS with no location tells a responder that somebody needs help but not
+            // where to go, which is close to useless. Best-effort only: a failed or slow
+            // fix still raises the alert rather than blocking it.
+            val location = locationProvider.currentFix().pointOrNull
+
             val outcome = incidentRepository.createIncident(
                 category = IncidentCategory.MEDICAL,
                 description = note,
-                location = null,
+                location = location,
                 photoLocalPath = null,
                 affectedPersonNote = null,
                 isSos = true,

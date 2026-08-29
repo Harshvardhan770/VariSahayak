@@ -47,12 +47,10 @@ import com.varisahayak.feature.dashboard.CommandDashboardScreen
 import com.varisahayak.feature.dashboard.DashboardViewModel
 import com.varisahayak.feature.dashboard.ResponderDashboardScreen
 import com.varisahayak.feature.dashboard.VolunteerDashboardScreen
-import com.varisahayak.feature.incident.IncidentDetailScreen
-import com.varisahayak.feature.incident.IncidentDetailViewModel
-import com.varisahayak.feature.incident.IncidentListScreen
-import com.varisahayak.feature.incident.IncidentListViewModel
-import com.varisahayak.feature.incident.ReportIncidentScreen
-import com.varisahayak.feature.incident.ReportIncidentViewModel
+import com.varisahayak.feature.auth.ForgotPasswordScreen
+import com.varisahayak.feature.incidents.IncidentDetailScreen
+import com.varisahayak.feature.incidents.IncidentListScreen
+import com.varisahayak.feature.incidents.ReportIncidentScreen
 import com.varisahayak.feature.lostfound.LostFoundScreen
 import com.varisahayak.feature.map.IncidentMapScreen
 import com.varisahayak.feature.profile.ProfileScreen
@@ -199,6 +197,10 @@ fun VariSahayakApp(
                 )
             }
 
+            composable<Destination.ForgotPassword> {
+                ForgotPasswordScreen(onNavigateBack = { navController.popBackStack() })
+            }
+
             composable<Destination.VolunteerDashboard> {
                 val dashboardViewModel: DashboardViewModel = hiltViewModel()
                 VolunteerDashboardScreen(
@@ -244,23 +246,15 @@ fun VariSahayakApp(
             }
 
             composable<Destination.IncidentList> {
-                val incidentListViewModel: IncidentListViewModel = hiltViewModel()
                 IncidentListScreen(
-                    viewModel = incidentListViewModel,
-                    onNavigateToDetail = { clientId ->
+                    onIncidentSelected = { clientId ->
                         navController.navigate(Destination.IncidentDetail(clientId))
                     },
                 )
             }
 
-            composable<Destination.IncidentDetail> { backStackEntry ->
-                val args = backStackEntry.toRoute<Destination.IncidentDetail>()
-                val incidentDetailViewModel: IncidentDetailViewModel = hiltViewModel()
-                IncidentDetailScreen(
-                    clientId = args.clientId,
-                    viewModel = incidentDetailViewModel,
-                    onNavigateBack = { navController.popBackStack() },
-                )
+            composable<Destination.IncidentDetail> {
+                IncidentDetailScreen()
             }
 
             composable<Destination.IncidentMap> {
@@ -288,15 +282,14 @@ fun VariSahayakApp(
                 LostFoundScreen()
             }
 
-            composable<Destination.ReportIncident> { backStackEntry ->
-                val args = backStackEntry.toRoute<Destination.ReportIncident>()
-                val reportViewModel: ReportIncidentViewModel = hiltViewModel()
+            composable<Destination.ReportIncident> {
                 ReportIncidentScreen(
-                    sosBridgeToken = args.sosBridgeToken,
-                    isSos = args.isSos,
-                    viewModel = reportViewModel,
-                    onReportSubmitted = {
-                        navController.popBackStack()
+                    onSaved = { clientId ->
+                        // Replace the form in the back stack: pressing back after filing a
+                        // report must not reopen a form that was already submitted.
+                        navController.navigate(Destination.IncidentDetail(clientId)) {
+                            popUpTo(Destination.ReportIncident()) { inclusive = true }
+                        }
                     },
                 )
             }

@@ -204,4 +204,10 @@
     <string name="sos_bridge_created">मदत विनंती तयार झाली.</string>
     <string name="sos_bridge_subject">टॅग संदर्भ: %1$s</string>
     <string name="sos_bridge_active_incident">या व्यक्तीची आधीच एक उघडी विनंती आहे.</string>
+    <string name="auth_forgot_password">पासवर्ड विसरलात?</string>
+    <string name="auth_reset_title">पासवर्ड रीसेट करा</string>
+    <string name="auth_reset_explain">तुमचा ईमेल टाका, आम्ही रीसेट दुवा पाठवू.</string>
+    <string name="auth_reset_send">रीसेट दुवा पाठवा</string>
+    <string name="auth_reset_sent">त्या पत्त्यावर खाते असल्यास, रीसेट दुवा पाठवला आहे.</string>
+    <string name="auth_signup_confirm_email">खाते तयार झाले. %1$s वर पुष्टी दुवा पहा, मग साइन इन करा.</string>
 </resources>
