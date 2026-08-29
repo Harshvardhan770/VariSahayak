@@ -52,6 +52,12 @@ import com.varisahayak.core.walkie.WAVEFORM_BAR_COUNT
 import com.varisahayak.core.walkie.WalkieConnection
 import com.varisahayak.core.walkie.WalkieFloor
 import com.varisahayak.core.walkie.WalkieUiState
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import com.varisahayak.core.walkie.WalkieChannel
 
 /**
  * The push-to-talk widget.
@@ -73,6 +79,7 @@ fun WalkieTalkieWidget(
     onStartTransmit: () -> Unit,
     onStopTransmit: () -> Unit,
     modifier: Modifier = Modifier,
+    onSelectChannel: (String) -> Unit = {},
 ) {
     val channel = state.channel ?: return
     val colors = VariTheme.colors
@@ -131,6 +138,19 @@ fun WalkieTalkieWidget(
                 Column {
                     Spacer(Modifier.height(Dimens.SpaceSm))
 
+                    // The channels existed only as a constant inside the controller, so the
+                    // widget rendered the one it happened to be joined to and a volunteer had
+                    // no way to reach the others. Hidden when there is only one, because a
+                    // picker with a single option is noise on a widget this small.
+                    if (state.availableChannels.size > 1) {
+                        ChannelPicker(
+                            channels = state.availableChannels,
+                            current = channel,
+                            onSelect = onSelectChannel,
+                        )
+                        Spacer(Modifier.height(Dimens.SpaceSm))
+                    }
+
                     VoiceActivityWaveform(
                         levels = state.levels,
                         active = state.isActive,
@@ -154,6 +174,60 @@ fun WalkieTalkieWidget(
                     )
                 }
             }
+        }
+    }
+}
+
+/**
+ * The channels this device may join.
+ *
+ * A scrolling row rather than a dropdown: the widget is already a small surface docked
+ * above the navigation bar, and a menu that opens over the PTT button would put a dismiss
+ * target where a volunteer expects the mic.
+ *
+ * The emergency channel is marked in text as well as colour. Everything on this widget has
+ * to survive being read one-handed in sunlight.
+ */
+@Composable
+private fun ChannelPicker(
+    channels: List<WalkieChannel>,
+    current: WalkieChannel,
+    onSelect: (String) -> Unit,
+) {
+    val colors = VariTheme.colors
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceXs),
+    ) {
+        channels.forEach { option ->
+            val selected = option.id == current.id
+            FilterChip(
+                selected = selected,
+                onClick = { if (!selected) onSelect(option.id) },
+                label = {
+                    Text(
+                        text = option.name,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = if (option.isEmergency) {
+                        colors.critical
+                    } else {
+                        colors.brandSubtle
+                    },
+                    selectedLabelColor = if (option.isEmergency) {
+                        colors.onBrandSubtle
+                    } else {
+                        colors.onBrandSubtle
+                    },
+                ),
+                modifier = Modifier.defaultMinSize(minHeight = Dimens.MinTouchTarget),
+            )
         }
     }
 }

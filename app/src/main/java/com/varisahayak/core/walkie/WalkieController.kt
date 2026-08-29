@@ -63,6 +63,7 @@ class SimulatedWalkieController @Inject constructor(
     private val _state = MutableStateFlow(
         WalkieUiState(
             channel = DEFAULT_CHANNEL,
+            availableChannels = CHANNELS,
             connection = WalkieConnection.Connected,
             isSimulated = true,
         ),
@@ -89,6 +90,8 @@ class SimulatedWalkieController @Inject constructor(
         _state.update {
             it.copy(
                 channel = null,
+                // The roster stays: leaving a channel must still leave the volunteer a way
+                // back onto one, and an emptied list would render an inert widget.
                 connection = WalkieConnection.NotConfigured,
                 floor = WalkieFloor.Idle,
                 levels = emptyList(),

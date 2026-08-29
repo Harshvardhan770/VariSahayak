@@ -54,6 +54,14 @@ sealed interface WalkieFloor {
  */
 data class WalkieUiState(
     val channel: WalkieChannel? = null,
+    /**
+     * Every channel this device may join.
+     *
+     * Carried in the state rather than read from the controller, because the widget is a
+     * design-system component that must not know which implementation is bound. Empty
+     * means "no choice to offer", which is what a single-channel transport would report.
+     */
+    val availableChannels: List<WalkieChannel> = emptyList(),
     val connection: WalkieConnection = WalkieConnection.NotConfigured,
     val floor: WalkieFloor = WalkieFloor.Idle,
     val levels: List<Float> = emptyList(),
