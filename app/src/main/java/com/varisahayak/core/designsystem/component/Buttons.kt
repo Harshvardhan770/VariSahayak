@@ -1,10 +1,19 @@
 package com.varisahayak.core.designsystem.component
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -16,10 +25,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import com.varisahayak.core.designsystem.Dimens
 import com.varisahayak.core.designsystem.VariTheme
 
@@ -40,19 +54,25 @@ fun VariPrimaryButton(
     enabled: Boolean = true,
 ) {
     val colors = VariTheme.colors
-    Button(
-        onClick = onClick,
-        enabled = enabled,
-        shape = RoundedCornerShape(Dimens.CornerMd),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = colors.brandSolid,
-            contentColor = colors.onBrandSolid,
-        ),
-        modifier = modifier
-            .fillMaxWidth()
-            .height(Dimens.PrimaryActionHeight),
-    ) {
-        ButtonContent(text = text, icon = icon)
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    
+    HighlightWrapper(isPressed = isPressed, color = colors.brandSolid, shape = RoundedCornerShape(Dimens.CornerMd)) {
+        Button(
+            onClick = onClick,
+            enabled = enabled,
+            shape = RoundedCornerShape(Dimens.CornerMd),
+            interactionSource = interactionSource,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = colors.brandSolid,
+                contentColor = colors.onBrandSolid,
+            ),
+            modifier = modifier
+                .fillMaxWidth()
+                .height(Dimens.PrimaryActionHeight),
+        ) {
+            ButtonContent(text = text, icon = icon)
+        }
     }
 }
 
@@ -73,17 +93,25 @@ fun VariActionButton(
     destructive: Boolean = false,
 ) {
     val colors = VariTheme.colors
-    Button(
-        onClick = onClick,
-        enabled = enabled,
-        shape = RoundedCornerShape(Dimens.CornerMd),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = if (destructive) colors.critical else colors.brandSolid,
-            contentColor = if (destructive) colors.onCritical else colors.onBrandSolid,
-        ),
-        modifier = modifier.defaultMinSize(minHeight = Dimens.MinTouchTarget),
-    ) {
-        ButtonContent(text = text, icon = icon)
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    
+    val color = if (destructive) colors.critical else colors.brandSolid
+
+    HighlightWrapper(isPressed = isPressed, color = color, shape = RoundedCornerShape(Dimens.CornerMd)) {
+        Button(
+            onClick = onClick,
+            enabled = enabled,
+            shape = RoundedCornerShape(Dimens.CornerMd),
+            interactionSource = interactionSource,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = color,
+                contentColor = if (destructive) colors.onCritical else colors.onBrandSolid,
+            ),
+            modifier = modifier.defaultMinSize(minHeight = Dimens.MinTouchTarget),
+        ) {
+            ButtonContent(text = text, icon = icon)
+        }
     }
 }
 
@@ -96,15 +124,21 @@ fun VariSecondaryButton(
     enabled: Boolean = true,
 ) {
     val colors = VariTheme.colors
-    OutlinedButton(
-        onClick = onClick,
-        enabled = enabled,
-        shape = RoundedCornerShape(Dimens.CornerMd),
-        colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textPrimary),
-        border = androidx.compose.foundation.BorderStroke(Dimens.Hairline, colors.cardBorderHover),
-        modifier = modifier.defaultMinSize(minHeight = Dimens.MinTouchTarget),
-    ) {
-        ButtonContent(text = text, icon = icon)
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    HighlightWrapper(isPressed = isPressed, color = colors.brandSolid, shape = RoundedCornerShape(Dimens.CornerMd)) {
+        OutlinedButton(
+            onClick = onClick,
+            enabled = enabled,
+            interactionSource = interactionSource,
+            shape = RoundedCornerShape(Dimens.CornerMd),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textPrimary),
+            border = BorderStroke(Dimens.Hairline, colors.cardBorderHover),
+            modifier = modifier.defaultMinSize(minHeight = Dimens.MinTouchTarget),
+        ) {
+            ButtonContent(text = text, icon = icon)
+        }
     }
 }
 
@@ -123,19 +157,51 @@ fun SosButton(
     enabled: Boolean = true,
 ) {
     val colors = VariTheme.colors
-    Button(
-        onClick = onClick,
-        enabled = enabled,
-        shape = RoundedCornerShape(Dimens.CornerLg),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = colors.critical,
-            contentColor = colors.onCritical,
-        ),
-        modifier = modifier
-            .fillMaxWidth()
-            .height(Dimens.SosActionHeight),
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    HighlightWrapper(isPressed = isPressed, color = colors.critical, shape = RoundedCornerShape(Dimens.CornerLg)) {
+        Button(
+            onClick = onClick,
+            enabled = enabled,
+            interactionSource = interactionSource,
+            shape = RoundedCornerShape(Dimens.CornerLg),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = colors.critical,
+                contentColor = colors.onCritical,
+            ),
+            modifier = modifier
+                .fillMaxWidth()
+                .height(Dimens.SosActionHeight),
+        ) {
+            ButtonContent(text = text, icon = Icons.Filled.Campaign, large = true)
+        }
+    }
+}
+
+/**
+ * A wrapper that shows a highlighted background when the content is pressed.
+ */
+@Composable
+private fun HighlightWrapper(
+    isPressed: Boolean,
+    color: Color,
+    shape: Shape,
+    content: @Composable () -> Unit
+) {
+    val highlightColor by animateColorAsState(
+        targetValue = if (isPressed) color.copy(alpha = 0.25f) else Color.Transparent,
+        animationSpec = tween(150),
+        label = "button_highlight"
+    )
+
+    Box(
+        modifier = Modifier
+            .background(highlightColor, shape)
+            .padding(if (isPressed) 4.dp else 0.dp),
+        contentAlignment = Alignment.Center
     ) {
-        ButtonContent(text = text, icon = Icons.Filled.Campaign, large = true)
+        content()
     }
 }
 

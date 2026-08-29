@@ -1,5 +1,6 @@
 package com.varisahayak.core.designsystem.component
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -9,6 +10,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -25,12 +28,12 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -62,12 +65,23 @@ fun StatusPill(
     contentDescription: String? = null,
 ) {
     val shape = RoundedCornerShape(Dimens.CornerPill)
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val highlightColor by animateColorAsState(
+        targetValue = if (isPressed) tone.content.copy(alpha = 0.15f) else Color.Transparent,
+        label = "pill_highlight"
+    )
 
     val clickModifier = if (onClick != null) {
         // The pill itself stays visually compact; the touch target does not.
         Modifier
             .clip(shape)
-            .clickable(onClick = onClick)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            )
             .defaultMinSize(minHeight = Dimens.MinTouchTarget)
     } else {
         Modifier
@@ -80,7 +94,10 @@ fun StatusPill(
     }
 
     Box(
-        modifier = modifier.then(clickModifier).then(semantics),
+        modifier = modifier
+            .then(clickModifier)
+            .then(semantics)
+            .background(highlightColor, shape),
         contentAlignment = Alignment.Center,
     ) {
         Row(
@@ -88,7 +105,13 @@ fun StatusPill(
                 .height(Dimens.PillHeight)
                 .clip(shape)
                 .background(tone.container)
-                .border(BorderStroke(Dimens.Hairline, tone.border), shape)
+                .border(
+                    BorderStroke(
+                        if (isPressed) 1.dp else Dimens.Hairline,
+                        if (isPressed) tone.content else tone.border
+                    ),
+                    shape
+                )
                 .padding(horizontal = Dimens.PillPaddingH),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceXs),
