@@ -3,6 +3,7 @@ package com.varisahayak.feature.communication
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.varisahayak.core.common.Outcome
+import com.varisahayak.core.walkie.WalkieController
 import com.varisahayak.domain.model.BroadcastingState
 import com.varisahayak.domain.model.CommunicationChannel
 import com.varisahayak.domain.model.CommunicationMessage
@@ -14,6 +15,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -21,7 +24,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class CommunicationViewModel @Inject constructor(
-    private val repository: CommunicationRepository
+    private val repository: CommunicationRepository,
+    private val walkieController: WalkieController
 ) : ViewModel() {
 
     private val _selectedChannelId = MutableStateFlow<String?>(null)
@@ -30,18 +34,20 @@ class CommunicationViewModel @Inject constructor(
     private val _broadcastingState = MutableStateFlow(BroadcastingState())
     val broadcastingState = _broadcastingState.asStateFlow()
 
+    val walkieState = walkieController.state
+
+    // In-memory messages for the current session (disappears when ViewModel is cleared)
+    private val _sessionMessages = MutableStateFlow<Map<String, List<CommunicationMessage>>>(emptyMap())
+
     val channels = repository.observeChannels().stateIn(
         scope = viewModelScope,
         started = SharingStarted.Eagerly,
         initialValue = emptyList()
     )
 
-    val messages = _selectedChannelId.flatMapLatest { channelId ->
-        if (channelId == null) {
-            MutableStateFlow(emptyList<CommunicationMessage>())
-        } else {
-            repository.observeMessages(channelId)
-        }
+    // Current channel messages
+    val messages = combine(_selectedChannelId, _sessionMessages) { id, messages ->
+        if (id == null) emptyList() else messages[id] ?: emptyList()
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
@@ -53,8 +59,36 @@ class CommunicationViewModel @Inject constructor(
         viewModelScope.launch {
             repository.observeChannels().collect { channels ->
                 if (_selectedChannelId.value == null && channels.isNotEmpty()) {
-                    _selectedChannelId.value = channels.first().id
+                    val firstChannelId = channels.first().id
+                    _selectedChannelId.value = firstChannelId
+                    walkieController.join(firstChannelId)
                 }
+            }
+        }
+
+        // Start collecting messages for all channels to update session storage
+        // Note: For a real app with many channels, we'd only observe the active one or use a shared flow.
+        // For this requirement, we observe everything to keep the session alive.
+        viewModelScope.launch {
+            repository.observeChannels().collect { channels ->
+                channels.forEach { channel ->
+                    repository.observeMessages(channel.id)
+                        .onEach { message ->
+                            addMessageToSession(message)
+                        }
+                        .launchIn(this)
+                }
+            }
+        }
+    }
+
+    private fun addMessageToSession(message: CommunicationMessage) {
+        _sessionMessages.update { current ->
+            val list = current[message.channelId] ?: emptyList()
+            if (list.none { it.id == message.id }) {
+                current + (message.channelId to (list + message))
+            } else {
+                current
             }
         }
     }
@@ -62,6 +96,7 @@ class CommunicationViewModel @Inject constructor(
     fun selectChannel(channelId: String) {
         _selectedChannelId.value = channelId
         _broadcastingState.update { it.copy(isEnabled = false) }
+        walkieController.join(channelId)
         viewModelScope.launch {
             repository.markAsRead(channelId)
         }
@@ -111,7 +146,10 @@ class CommunicationViewModel @Inject constructor(
         if (targets.isEmpty() || content.isBlank()) return
 
         viewModelScope.launch {
-            repository.sendMessage(targets, content)
+            val outcome = repository.sendMessage(targets, content)
+            if (outcome is Outcome.Success) {
+                outcome.data.forEach { addMessageToSession(it) }
+            }
         }
     }
 
@@ -120,5 +158,16 @@ class CommunicationViewModel @Inject constructor(
         viewModelScope.launch {
             repository.sendMessage(listOf("all_hands"), "SOS EMERGENCY TRIGGERED", isSos = true)
         }
+    }
+
+    fun startTransmit() {
+        _selectedChannelId.value?.let { channelId ->
+            walkieController.join(channelId)
+            walkieController.startTransmit()
+        }
+    }
+
+    fun stopTransmit() {
+        walkieController.stopTransmit()
     }
 }
