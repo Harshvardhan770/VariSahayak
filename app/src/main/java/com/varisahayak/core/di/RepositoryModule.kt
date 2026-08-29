@@ -6,6 +6,7 @@ import com.varisahayak.data.repository.DeviceTokenRepositoryImpl
 import com.varisahayak.data.repository.IncidentRepositoryImpl
 import com.varisahayak.data.repository.LocationRepositoryImpl
 import com.varisahayak.data.repository.LostFoundRepositoryImpl
+import com.varisahayak.data.repository.PalkhiRepositoryImpl
 import com.varisahayak.data.repository.ProfileRepositoryImpl
 import com.varisahayak.data.repository.QrLocationRepositoryImpl
 import com.varisahayak.data.repository.ResponderRepositoryImpl
@@ -15,6 +16,7 @@ import com.varisahayak.domain.repository.DeviceTokenRepository
 import com.varisahayak.domain.repository.IncidentRepository
 import com.varisahayak.domain.repository.LocationRepository
 import com.varisahayak.domain.repository.LostFoundRepository
+import com.varisahayak.domain.repository.PalkhiRepository
 import com.varisahayak.domain.repository.ProfileRepository
 import com.varisahayak.domain.repository.QrLocationRepository
 import com.varisahayak.domain.repository.ResponderRepository
@@ -82,4 +84,10 @@ abstract class RepositoryModule {
     abstract fun bindClassificationRepository(
         impl: ClassificationRepositoryImpl
     ): ClassificationRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindPalkhiRepository(
+        impl: PalkhiRepositoryImpl
+    ): PalkhiRepository
 }

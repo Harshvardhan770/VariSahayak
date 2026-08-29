@@ -7,15 +7,21 @@ import com.varisahayak.core.location.LocationProvider
 import com.varisahayak.core.network.ConnectivityObserver
 import com.varisahayak.domain.model.GeoPoint
 import com.varisahayak.domain.model.Incident
+import com.varisahayak.domain.model.Palkhi
+import com.varisahayak.domain.model.PalkhiTrackingInfo
 import com.varisahayak.domain.repository.IncidentRepository
+import com.varisahayak.domain.repository.PalkhiRepository
 import com.varisahayak.domain.usecase.Hotspot
 import com.varisahayak.domain.usecase.HotspotCalculator
+import com.varisahayak.domain.usecase.distanceMetresTo
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -24,6 +30,9 @@ import javax.inject.Inject
 data class IncidentMapUiState(
     val incidents: List<Incident> = emptyList(),
     val hotspots: List<Hotspot> = emptyList(),
+    val palkhis: List<Palkhi> = emptyList(),
+    val palkhiTracking: List<PalkhiTrackingInfo> = emptyList(),
+    val showPalkhiTracks: Boolean = true,
     val myLocation: GeoPoint? = null,
     val locationMessage: LocationMessage? = null,
     val isOffline: Boolean = false,
@@ -44,6 +53,7 @@ enum class LocationMessage {
 @HiltViewModel
 class IncidentMapViewModel @Inject constructor(
     private val incidentRepository: IncidentRepository,
+    private val palkhiRepository: PalkhiRepository,
     private val locationProvider: LocationProvider,
     private val hotspotCalculator: HotspotCalculator,
     connectivityObserver: ConnectivityObserver,
@@ -53,25 +63,52 @@ class IncidentMapViewModel @Inject constructor(
     val uiState: StateFlow<IncidentMapUiState> = _uiState.asStateFlow()
 
     init {
-        // Incidents come from the local database, so the map's pins are populated even
-        // when the tile layer underneath them cannot load.
+        // Incidents and Palkhis come from their respective repositories.
         combine(
             incidentRepository.observeOpen(),
+            palkhiRepository.observePalkhis(),
             connectivityObserver.isOnline,
-        ) { incidents, isOnline ->
-            incidents to isOnline
+            _uiState.map { it.myLocation }.distinctUntilChanged()
+        ) { incidents, palkhis, isOnline, myLocation ->
+            val trackingInfo = palkhis.map { palkhi ->
+                val distance = myLocation?.let { loc -> 
+                    palkhi.currentPosition?.distanceMetresTo(loc) 
+                }
+                PalkhiTrackingInfo(
+                    palkhiId = palkhi.id,
+                    palkhiName = palkhi.name,
+                    distanceMetres = distance,
+                    nextStop = palkhi.route.lastOrNull(),
+                    isTrackingActive = true
+                )
+            }
+            // Group data to pass to onEach
+            MapData(incidents, palkhis, isOnline, trackingInfo)
         }
-            .onEach { (incidents, isOnline) ->
+            .onEach { data ->
                 _uiState.update {
                     it.copy(
-                        incidents = incidents,
-                        hotspots = hotspotCalculator.cluster(incidents),
-                        isOffline = !isOnline,
+                        incidents = data.incidents,
+                        hotspots = hotspotCalculator.cluster(data.incidents),
+                        palkhis = data.palkhis,
+                        palkhiTracking = data.trackingInfo,
+                        isOffline = !data.isOnline,
                         isLoading = false,
                     )
                 }
             }
             .launchIn(viewModelScope)
+    }
+
+    private data class MapData(
+        val incidents: List<Incident>,
+        val palkhis: List<Palkhi>,
+        val isOnline: Boolean,
+        val trackingInfo: List<PalkhiTrackingInfo>
+    )
+
+    fun togglePalkhiTracks() {
+        _uiState.update { it.copy(showPalkhiTracks = !it.showPalkhiTracks) }
     }
 
     /**
