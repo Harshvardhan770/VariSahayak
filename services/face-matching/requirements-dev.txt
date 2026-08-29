@@ -1,0 +1,9 @@
+# Test-only dependencies. Not installed into the runtime image.
+#
+# DeepFace and its TensorFlow stack are never imported by the tests: face_engine's DeepFace
+# calls are patched out, which is what lets the suite run in seconds on a laptop instead of
+# minutes on a VM with model weights to download.
+
+-r requirements.txt
+pytest==8.3.3
+mongomock==4.3.0    # an in-process MongoDB, so tests need no server

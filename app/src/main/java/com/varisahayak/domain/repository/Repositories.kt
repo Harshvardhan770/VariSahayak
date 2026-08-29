@@ -149,6 +149,18 @@ data class SyncSummary(
     val hasFailures: Boolean get() = failed > 0
 }
 
+/**
+ * The signed-in device's own position track.
+ *
+ * Separate from [ResponderRepository.reportLocation], which maintains the single
+ * denormalised fix the matcher ranks on. This one appends history, and it applies to every
+ * role — a volunteer has no responder row but still has a location worth knowing.
+ */
+interface LocationRepository {
+    /** Best-effort. A failure is logged and swallowed; nothing upstream waits on this. */
+    suspend fun record(point: GeoPoint): Outcome<Unit>
+}
+
 interface ResponderRepository {
     fun observeAvailable(): Flow<List<Responder>>
 

@@ -35,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -47,6 +48,7 @@ import com.varisahayak.core.designsystem.VariTheme
 import com.varisahayak.core.designsystem.component.FloatingTopBar
 import com.varisahayak.core.designsystem.component.WalkieTalkieWidget
 import com.varisahayak.core.locale.AppLocale
+import com.varisahayak.core.permissions.AppPermissions
 import com.varisahayak.core.walkie.WalkieUiState
 import com.varisahayak.domain.model.UserRole
 import com.varisahayak.domain.repository.AuthState
@@ -89,6 +91,16 @@ fun VariSahayakApp(
     // rather than at first launch, so the prompt arrives when there is something to be
     // notified about.
     NotificationPermissionRequest(enabled = profile != null)
+
+    // The device's own position. Nothing collected LocationProvider.locationUpdates()
+    // before this, so no volunteer or responder position ever reached the server — which
+    // also left the proximity term in match_responder scoring zero for everybody, because
+    // responders.last_location_at was never written.
+    LocationTrackingEffect(
+        enabled = profile != null,
+        onStart = viewModel::startLocationTracking,
+        onStop = viewModel::stopLocationTracking,
+    )
 
     // A tapped notification names a server incident id; every route here is keyed by the
     // device-generated client id. Resolve, then navigate, then clear — so a configuration
@@ -507,6 +519,36 @@ private fun SplashScreen() {
  * `notifications` table is the authoritative record and the incident list always shows the
  * work, so a volunteer who says no still sees everything — they just have to look.
  */
+/**
+ * Runs position publishing while the app is in front of the user and somebody is signed in.
+ *
+ * Tied to the resumed state rather than to composition. [LocationTracker] is a plain
+ * singleton with no foreground service behind it, so leaving it running once the app is
+ * backgrounded would ask the system for updates the app is no longer entitled to receive
+ * — and would drain a volunteer's battery for a whole day on the route.
+ *
+ * The permission is re-read on every resume, which is what makes returning from the system
+ * settings screen start tracking without needing anything else to notice.
+ */
+@Composable
+private fun LocationTrackingEffect(
+    enabled: Boolean,
+    onStart: () -> Unit,
+    onStop: () -> Unit,
+) {
+    val context = LocalContext.current
+
+    LifecycleResumeEffect(enabled) {
+        val granted = AppPermissions.LOCATION.any { permission ->
+            ContextCompat.checkSelfPermission(context, permission) ==
+                PackageManager.PERMISSION_GRANTED
+        }
+        if (enabled && granted) onStart()
+
+        onPauseOrDispose { onStop() }
+    }
+}
+
 @Composable
 private fun NotificationPermissionRequest(enabled: Boolean) {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return

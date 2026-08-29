@@ -148,6 +148,8 @@
     <string name="permission_location_denied">Location permission denied. Incidents will be reported without coordinates.</string>
     <string name="permission_location_coarse_only">Approximate location only — accuracy is reduced.</string>
     <string name="permission_location_disabled">Device location is switched off.</string>
+    <string name="permission_location_grant">Allow location access</string>
+    <string name="permission_location_turn_on">Turn on device location</string>
 
     <!-- Camera permission -->
     <string name="permission_camera_title">Camera access</string>

@@ -3,6 +3,7 @@ package com.varisahayak.app
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.varisahayak.core.common.Outcome
+import com.varisahayak.core.location.LocationTracker
 import com.varisahayak.core.network.ConnectivityObserver
 import com.varisahayak.core.walkie.WalkieController
 import com.varisahayak.domain.repository.AuthRepository
@@ -31,6 +32,7 @@ class MainViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val profileRepository: ProfileRepository,
     connectivityObserver: ConnectivityObserver,
+    private val locationTracker: LocationTracker,
     private val walkieController: WalkieController,
     private val incidentRepository: IncidentRepository,
     private val syncScheduler: SyncScheduler,
@@ -96,6 +98,16 @@ class MainViewModel @Inject constructor(
             onResolved(clientId)
         }
     }
+
+    /**
+     * Position publishing, driven by the shell rather than by any one screen.
+     *
+     * Foreground-scoped on purpose: [LocationTracker] holds no service and no wake lock,
+     * so tracking has to end when the app does. Both calls are idempotent.
+     */
+    fun startLocationTracking() = locationTracker.start()
+
+    fun stopLocationTracking() = locationTracker.stop()
 
     fun consumeNotification() = deepLinkBus.consume()
 

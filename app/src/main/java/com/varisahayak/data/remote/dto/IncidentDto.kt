@@ -112,6 +112,23 @@ data class IncidentEventDto(
     @SerialName("occurred_at") val occurredAt: String,
 )
 
+/**
+ * One point on a user's device track, for `public.locations`.
+ *
+ * accuracy_m and is_approximate travel with the point rather than being inferred later:
+ * a fix taken under an approximate-location grant is a different kind of fact from a GPS
+ * one, and whoever reads the track has to be able to tell them apart.
+ */
+@Serializable
+data class DeviceLocationDto(
+    @SerialName("user_id") val userId: String,
+    @SerialName("latitude") val latitude: Double,
+    @SerialName("longitude") val longitude: Double,
+    @SerialName("accuracy_m") val accuracyMetres: Float? = null,
+    @SerialName("is_approximate") val isApproximate: Boolean = false,
+    @SerialName("recorded_at") val recordedAt: String,
+)
+
 @Serializable
 data class DeviceTokenDto(
     @SerialName("user_id") val userId: String,
