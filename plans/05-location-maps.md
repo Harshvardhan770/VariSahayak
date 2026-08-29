@@ -9,7 +9,7 @@
 
 ## Preconditions
 
-Phases 1–4 complete. `GOOGLE_MAPS_API_KEY` in `local.properties`.
+Phases 1–4 complete. `GOOGLE_MAPS_API_KEY` in `.env`.
 
 ---
 
@@ -38,7 +38,7 @@ Phases 1–4 complete. `GOOGLE_MAPS_API_KEY` in `local.properties`.
 ### 5.3 Maps
 
 - `maps-compose:8.5.0` only. Do **not** also declare `play-services-maps` — maps-compose pulls the right version transitively and declaring both invites a clash (contract §0.4).
-- Maps key injected as a manifest placeholder from `local.properties`, never committed.
+- Maps key injected as a manifest placeholder from `.env`, never committed.
 - **Restrict the key** in Google Cloud Console to the app's package name and signing certificate SHA-1 (PRD, "Security").
 - Incident markers clustered by density, styled by priority — colour **plus** icon shape, never colour alone.
 - Marker tap → incident detail.
