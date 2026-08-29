@@ -2,6 +2,7 @@ package com.varisahayak.core.di
 
 import com.varisahayak.data.repository.AuthRepositoryImpl
 import com.varisahayak.data.repository.ClassificationRepositoryImpl
+import com.varisahayak.data.repository.CommunicationRepositoryImpl
 import com.varisahayak.data.repository.DeviceTokenRepositoryImpl
 import com.varisahayak.data.repository.IncidentRepositoryImpl
 import com.varisahayak.data.repository.LocationRepositoryImpl
@@ -11,6 +12,7 @@ import com.varisahayak.data.repository.QrLocationRepositoryImpl
 import com.varisahayak.data.repository.ResponderRepositoryImpl
 import com.varisahayak.domain.repository.AuthRepository
 import com.varisahayak.domain.repository.ClassificationRepository
+import com.varisahayak.domain.repository.CommunicationRepository
 import com.varisahayak.domain.repository.DeviceTokenRepository
 import com.varisahayak.domain.repository.IncidentRepository
 import com.varisahayak.domain.repository.LocationRepository
@@ -39,6 +41,12 @@ abstract class RepositoryModule {
     abstract fun bindProfileRepository(
         impl: ProfileRepositoryImpl
     ): ProfileRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindCommunicationRepository(
+        impl: CommunicationRepositoryImpl
+    ): CommunicationRepository
 
     @Binds
     @Singleton

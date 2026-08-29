@@ -61,6 +61,7 @@ import com.varisahayak.feature.auth.SignInScreen
 import com.varisahayak.feature.auth.SignInViewModel
 import com.varisahayak.feature.auth.SignUpScreen
 import com.varisahayak.feature.auth.SignUpViewModel
+import com.varisahayak.feature.communication.CommunicationScreen
 import com.varisahayak.feature.dashboard.CommandDashboardScreen
 import com.varisahayak.feature.dashboard.DashboardActions
 import com.varisahayak.feature.dashboard.ResponderDashboardScreen
@@ -309,6 +310,7 @@ private fun String?.titleRes(): Int = when {
     contains("ReportIncident") -> R.string.report_title
     contains("QrScanner") -> R.string.qr_scan_title
     contains("LostAndFound") -> R.string.lostfound_title
+    contains("Communication") -> R.string.comms_title
     contains("Profile") -> R.string.profile_title
     contains("CommandDashboard") || contains("AdminDashboard") -> R.string.command_title
     contains("Dashboard") -> R.string.nav_dashboard
@@ -484,6 +486,10 @@ private fun VariNavHost(
             LostFoundScreen(
                 onOpenMatches = { navController.navigate(Destination.MatchReview) },
             )
+        }
+
+        composable<Destination.Communication> {
+            CommunicationScreen()
         }
 
         composable<Destination.MatchReview> {

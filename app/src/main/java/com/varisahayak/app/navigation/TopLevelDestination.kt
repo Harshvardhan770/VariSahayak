@@ -5,6 +5,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.ListAlt
 import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.Message
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -27,6 +28,7 @@ enum class TopLevelDestination(
     HOME(R.string.nav_dashboard, Icons.Filled.Home, Destination.VolunteerDashboard),
     INCIDENTS(R.string.nav_incidents, Icons.Filled.ListAlt, Destination.IncidentList),
     MAP(R.string.nav_map, Icons.Filled.Map, Destination.IncidentMap),
+    COMMS(R.string.comms_title, Icons.Filled.Message, Destination.Communication),
     SCAN(R.string.nav_scan, Icons.Filled.QrCodeScanner, Destination.QrScanner),
     PROFILE(R.string.nav_profile, Icons.Filled.Person, Destination.Profile),
     ;
@@ -47,6 +49,7 @@ enum class TopLevelDestination(
                 add(HOME)
                 add(INCIDENTS)
                 add(MAP)
+                add(COMMS)
                 // The scanner earns a permanent slot only for the volunteer, whose whole
                 // job on the route is meeting Varkaris who have no phone.
                 if (capabilities.canScanQr && !capabilities.canSeeAreaWideIncidents) add(SCAN)
