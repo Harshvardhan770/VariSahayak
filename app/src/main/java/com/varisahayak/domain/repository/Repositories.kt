@@ -41,7 +41,7 @@ interface AuthRepository {
 
     suspend fun signIn(email: String, password: String): Outcome<Unit>
 
-    suspend fun signUp(email: String, password: String, displayName: String): Outcome<Unit>
+    suspend fun signUp(email: String, password: String, displayName: String, role: com.varisahayak.domain.model.UserRole): Outcome<Unit>
 
     suspend fun signOut(): Outcome<Unit>
 }

@@ -12,6 +12,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.varisahayak.R
 import com.varisahayak.core.common.AppError
+import com.varisahayak.domain.model.UserRole
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,6 +63,60 @@ fun SignUpScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            var expanded by remember { mutableStateOf(false) }
+            ExposedDropdownMenuBox(
+                expanded = expanded,
+                onExpandedChange = { expanded = !expanded },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                OutlinedTextField(
+                    value = when (uiState.selectedRole) {
+                        UserRole.VOLUNTEER -> stringResource(R.string.role_volunteer)
+                        UserRole.MEDICAL_RESPONDER -> stringResource(R.string.role_medical)
+                        UserRole.POLICE_RESPONDER -> stringResource(R.string.role_police)
+                        UserRole.NGO_RESPONDER -> stringResource(R.string.role_ngo)
+                        UserRole.ORGANISER -> stringResource(R.string.role_organiser)
+                        UserRole.ADMINISTRATOR -> stringResource(R.string.role_admin)
+                    },
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text(stringResource(R.string.profile_title)) }, // Reusing profile_title for Role label
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                    modifier = Modifier
+                        .menuAnchor(MenuAnchorType.PrimaryEditable, true)
+                        .fillMaxWidth(),
+                    enabled = !uiState.isLoading
+                )
+
+                ExposedDropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
+                    UserRole.entries.forEach { role ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    when (role) {
+                                        UserRole.VOLUNTEER -> stringResource(R.string.role_volunteer)
+                                        UserRole.MEDICAL_RESPONDER -> stringResource(R.string.role_medical)
+                                        UserRole.POLICE_RESPONDER -> stringResource(R.string.role_police)
+                                        UserRole.NGO_RESPONDER -> stringResource(R.string.role_ngo)
+                                        UserRole.ORGANISER -> stringResource(R.string.role_organiser)
+                                        UserRole.ADMINISTRATOR -> stringResource(R.string.role_admin)
+                                    }
+                                )
+                            },
+                            onClick = {
+                                viewModel.onRoleChanged(role)
+                                expanded = false
+                            }
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             OutlinedTextField(
                 value = uiState.email,
                 onValueChange = viewModel::onEmailChanged,
@@ -109,7 +164,7 @@ fun SignUpScreen(
                     is AppError.Validation -> error.message
                     is AppError.Unauthorised -> stringResource(R.string.auth_error_invalid_credentials)
                     is AppError.Offline -> stringResource(R.string.auth_error_offline)
-                    else -> stringResource(R.string.state_error)
+                    else -> error.cause?.message ?: stringResource(R.string.state_error)
                 }
                 Text(
                     text = errorMessage,

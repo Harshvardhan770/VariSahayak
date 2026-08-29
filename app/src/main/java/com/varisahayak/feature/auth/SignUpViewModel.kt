@@ -7,6 +7,7 @@ import com.varisahayak.core.common.Outcome
 import com.varisahayak.domain.repository.AuthRepository
 import com.varisahayak.core.common.onFailure
 import com.varisahayak.core.common.onSuccess
+import com.varisahayak.domain.model.UserRole
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,6 +20,7 @@ data class SignUpUiState(
     val email: String = "",
     val password: String = "",
     val displayName: String = "",
+    val selectedRole: UserRole = UserRole.VOLUNTEER,
     val error: AppError? = null,
     val isLoading: Boolean = false,
     val isSuccess: Boolean = false,
@@ -44,10 +46,15 @@ class SignUpViewModel @Inject constructor(
         _uiState.update { it.copy(displayName = displayName, error = null) }
     }
 
+    fun onRoleChanged(role: UserRole) {
+        _uiState.update { it.copy(selectedRole = role, error = null) }
+    }
+
     fun signUp() {
         val email = _uiState.value.email
         val password = _uiState.value.password
         val displayName = _uiState.value.displayName
+        val role = _uiState.value.selectedRole
 
         if (email.isBlank() || password.isBlank() || displayName.isBlank()) {
             _uiState.update { it.copy(error = AppError.Validation(message = "All fields are required")) }
@@ -57,7 +64,7 @@ class SignUpViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
 
-            authRepository.signUp(email, password, displayName)
+            authRepository.signUp(email, password, displayName, role)
                 .onSuccess {
                     _uiState.update { it.copy(isLoading = false, isSuccess = true) }
                 }

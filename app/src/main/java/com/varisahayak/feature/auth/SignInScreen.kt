@@ -84,7 +84,7 @@ fun SignInScreen(
                 is AppError.Validation -> error.message
                 is AppError.Unauthorised -> stringResource(R.string.auth_error_invalid_credentials)
                 is AppError.Offline -> stringResource(R.string.auth_error_offline)
-                else -> stringResource(R.string.state_error)
+                else -> error.cause?.message ?: stringResource(R.string.state_error)
             }
             Text(
                 text = errorMessage,
