@@ -129,6 +129,19 @@
 
     <string name="permission_notifications_rationale">सूचना तुम्हाला नवीन कामे आणि आणीबाणीबद्दल कळवतात. त्याशिवाय नवीन काम पाहण्यासाठी अ‍ॅप उघडावे लागेल.</string>
 
+    <string name="map_title">घटना नकाशा</string>
+    <string name="map_offline">नकाशासाठी जोडणी आवश्यक आहे</string>
+    <string name="map_offline_detail">तुमच्या घटना यादीत उपलब्ध आणि पूर्णपणे वापरण्यायोग्य आहेत.</string>
+    <string name="map_recenter">माझ्यावर केंद्रित करा</string>
+    <string name="map_enable_location">ठिकाण चालू करा</string>
+    <string name="map_grant_location">ठिकाणाची परवानगी द्या</string>
+    <string name="map_location_unavailable">सध्या तुमचे ठिकाण मिळू शकले नाही.</string>
+    <string name="map_hotspot_incidents">%1$d घटना</string>
+    <string name="map_legend">आकार आणि रंग दोन्ही प्राधान्य दर्शवतात</string>
+    <string name="cd_map_my_location">तुमची स्थिती</string>
+    <string name="cd_map_recenter">नकाशा तुमच्या स्थितीवर केंद्रित करा</string>
+    <string name="cd_map_hotspot">%1$d घटना, सर्वोच्च प्राधान्य %2$s</string>
+
     <string name="qr_scan_title">QR ओळखचिन्ह स्कॅन करा</string>
     <string name="qr_scan_hint">कॅमेरा वारकऱ्याच्या QR टॅगवर धरा</string>
     <string name="qr_torch">टॉर्च</string>
@@ -182,4 +195,9 @@
     <string name="cd_add_photo">फोटो जोडा</string>
     <string name="cd_torch_on">टॉर्च चालू करा</string>
     <string name="cd_torch_off">टॉर्च बंद करा</string>
+    <string name="qr_contains_personal_data">या टॅगमध्ये वैयक्तिक माहिती आहे, तो वापरता येणार नाही. आयोजकांना कळवा.</string>
+    <string name="sos_bridge_creating">मदत विनंती तयार होत आहे…</string>
+    <string name="sos_bridge_created">मदत विनंती तयार झाली.</string>
+    <string name="sos_bridge_subject">टॅग संदर्भ: %1$s</string>
+    <string name="sos_bridge_active_incident">या व्यक्तीची आधीच एक उघडी विनंती आहे.</string>
 </resources>
