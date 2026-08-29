@@ -21,17 +21,44 @@ import com.varisahayak.domain.model.UserRole
  * growing its own idea of what the navigation looks like.
  */
 enum class TopLevelDestination(
-    @StringRes val labelRes: Int,
     val icon: ImageVector,
-    val route: Destination,
 ) {
-    HOME(R.string.nav_dashboard, Icons.Filled.Home, Destination.VolunteerDashboard),
-    INCIDENTS(R.string.nav_incidents, Icons.Filled.ListAlt, Destination.IncidentList),
-    MAP(R.string.nav_map, Icons.Filled.Map, Destination.IncidentMap),
-    COMMS(R.string.comms_title, Icons.Filled.Message, Destination.Communication),
-    SCAN(R.string.nav_scan, Icons.Filled.QrCodeScanner, Destination.QrScanner),
-    PROFILE(R.string.nav_profile, Icons.Filled.Person, Destination.Profile),
+    HOME(Icons.Filled.Home),
+    INCIDENTS(Icons.Filled.ListAlt),
+    MAP(Icons.Filled.Map),
+    COMMS(Icons.Filled.Message),
+    SCAN(Icons.Filled.QrCodeScanner),
+    PROFILE(Icons.Filled.Person),
     ;
+
+    /**
+     * Labels change based on role. The Administrator/Organiser "Home" is the Command
+     * dashboard, which they think of as "Operations".
+     */
+    @StringRes
+    fun labelResFor(role: UserRole): Int = when (this) {
+        HOME -> when (role) {
+            UserRole.ORGANISER, UserRole.ADMINISTRATOR -> R.string.command_title
+            else -> R.string.nav_dashboard
+        }
+        INCIDENTS -> R.string.nav_incidents
+        MAP -> R.string.nav_map
+        COMMS -> R.string.comms_title
+        SCAN -> R.string.nav_scan
+        PROFILE -> R.string.nav_profile
+    }
+
+    /**
+     * Routes are also role-dependent: "Home" lands on different dashboards.
+     */
+    fun routeFor(role: UserRole): Destination = when (this) {
+        HOME -> homeRoute(role)
+        INCIDENTS -> Destination.IncidentList
+        MAP -> Destination.IncidentMap
+        COMMS -> Destination.Communication
+        SCAN -> Destination.QrScanner
+        PROFILE -> Destination.Profile
+    }
 
     companion object {
         /**

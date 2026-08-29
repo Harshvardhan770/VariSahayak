@@ -243,8 +243,9 @@ fun VariSahayakApp(
                     VariNavigationBar(
                         destinations = TopLevelDestination.forRole(currentRole),
                         currentRoute = currentRoute,
+                        currentRole = currentRole,
                         onSelect = { dest ->
-                            navController.navigate(dest.route) {
+                            navController.navigate(dest.routeFor(currentRole)) {
                                 popUpTo(navController.graph.findStartDestination().id) {
                                     saveState = true
                                 }
@@ -278,6 +279,7 @@ fun VariSahayakApp(
 private fun VariNavigationBar(
     destinations: List<TopLevelDestination>,
     currentRoute: String?,
+    currentRole: UserRole,
     onSelect: (TopLevelDestination) -> Unit,
 ) {
     val colors = VariTheme.colors
@@ -287,7 +289,8 @@ private fun VariNavigationBar(
         tonalElevation = NavigationBarDefaults.Elevation,
     ) {
         destinations.forEach { dest ->
-            val isSelected = currentRoute?.contains(dest.route::class.simpleName ?: "") == true
+            val route = dest.routeFor(currentRole)
+            val isSelected = currentRoute?.contains(route::class.simpleName ?: "") == true
             NavigationBarItem(
                 selected = isSelected,
                 onClick = { onSelect(dest) },
@@ -299,7 +302,7 @@ private fun VariNavigationBar(
                 },
                 label = {
                     Text(
-                        text = stringResource(dest.labelRes),
+                        text = stringResource(dest.labelResFor(currentRole)),
                         style = MaterialTheme.typography.labelSmall,
                     )
                 },
