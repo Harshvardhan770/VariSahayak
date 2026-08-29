@@ -192,6 +192,7 @@ fun VariSahayakApp(
         containerColor = Color.Transparent,
         topBar = {
             if (!isAuthOrSplash) {
+                val isDashboard = currentRoute?.contains("Dashboard") == true
                 FloatingTopBar(
                     title = stringResource(currentRoute.titleRes()),
                     role = profile?.role,
@@ -200,6 +201,7 @@ fun VariSahayakApp(
                     onLocaleChange = onLocaleChange,
                     walkieEnabled = walkieVisible,
                     onToggleWalkie = { walkieVisible = !walkieVisible },
+                    showDetails = !isDashboard,
                     modifier = Modifier
                         .statusBarsPadding()
                         .padding(
