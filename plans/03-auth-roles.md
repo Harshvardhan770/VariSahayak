@@ -106,7 +106,7 @@ Offline sign-in attempt must produce a clear "no connection" message, not a hang
 - Do **not** use `GoTrue`, `loginWith`, `logout`, or the `io.github.jan.supabase.gotrue` package — all renamed (contract §0.10).
 - Do **not** expect `signInWith` to return a session; it returns `Unit`.
 - Do **not** enforce authorisation only on the client. Every client-side gate must have an RLS policy behind it.
-- Do **not** store the anon key anywhere but `BuildConfig` fed from git-ignored `local.properties`.
+- Do **not** store the anon key anywhere but `BuildConfig` fed from git-ignored `.env`.
 - Do **not** clear local unsynced data on session expiry.
 
 ## Done when

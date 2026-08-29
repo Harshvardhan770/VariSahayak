@@ -51,10 +51,10 @@ Record the outcome of all three gates in a short note at the top of `plans/01-fo
 
 ### 1.4 Secrets plumbing
 
-- Create `local.properties` entries (git-ignored) for `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `GOOGLE_MAPS_API_KEY`.
+- Create `.env` entries (git-ignored) for `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `GOOGLE_MAPS_API_KEY`.
 - Read them in `app/build.gradle.kts` and expose via `buildConfigField` / `manifestPlaceholders`.
-- Commit a `local.properties.example` with empty values.
-- Confirm `.gitignore` covers `local.properties`, `google-services.json`, `*.jks`, `supabase/.env*`.
+- Commit a `.env.example` with empty values.
+- Confirm `.gitignore` covers `.env`, `local.properties`, `google-services.json`, `*.jks`, `supabase/.env*`.
 - **`GEMINI_API_KEY` and any service-role key must never appear anywhere under `app/`** (contract §0.10).
 
 ### 1.5 Package skeleton
@@ -101,7 +101,7 @@ Build `core/designsystem/` with the PRD's semantic tokens: `Primary`, `PrimaryCo
 - [ ] `gradlew :app:dependencies` shows `navigation-compose:2.9.8`, `room-runtime:2.8.4`, and `ktor-client-okhttp:3.5.1` — and does **not** show `ktor-client-android` or `androidx.room3`.
 - [ ] `git grep -nE "kotlinOptions|kapt\(|kotlinCompilerExtensionVersion|jcenter|org.jetbrains.kotlin.android|enableJetifier"` returns nothing.
 - [ ] `git grep -nE "GEMINI_API_KEY|SERVICE_ROLE" -- app/` returns nothing.
-- [ ] `git check-ignore local.properties` confirms it is ignored.
+- [ ] `git check-ignore .env` and `git check-ignore local.properties` confirm they are ignored.
 - [ ] `git grep -nE 'text\s*=\s*"' -- app/src/main` returns nothing (no hardcoded UI strings).
 - [ ] Switching device language to Hindi and Marathi loads the corresponding `strings.xml` without crashing.
 - [ ] Every interactive component in the skeleton measures at least 48dp.
