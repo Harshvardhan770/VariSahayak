@@ -30,7 +30,7 @@ import com.varisahayak.core.designsystem.accentTone
 import com.varisahayak.core.designsystem.component.ActiveAssignmentCard
 import com.varisahayak.core.designsystem.component.CompactStat
 import com.varisahayak.core.designsystem.component.IncidentRow
-import com.varisahayak.core.designsystem.component.LoadingState
+import com.varisahayak.core.designsystem.component.ShimmerLoadingState
 import com.varisahayak.core.designsystem.component.NotConnectedPanel
 import com.varisahayak.core.designsystem.component.OperationalCard
 import com.varisahayak.core.designsystem.component.PersonCard
@@ -66,7 +66,7 @@ fun VolunteerDashboardScreen(
     LaunchedEffect(Unit) { viewModel.refreshMyLocation() }
 
     if (uiState.isLoading && uiState.profile == null) {
-        LoadingState(modifier = modifier)
+        ShimmerLoadingState(modifier = modifier)
         return
     }
 

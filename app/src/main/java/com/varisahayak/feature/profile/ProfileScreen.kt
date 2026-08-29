@@ -39,7 +39,7 @@ import androidx.compose.ui.unit.dp
 import com.varisahayak.R
 import com.varisahayak.core.designsystem.Dimens
 import com.varisahayak.core.designsystem.VariTheme
-import com.varisahayak.core.designsystem.component.LoadingState
+import com.varisahayak.core.designsystem.component.ShimmerLoadingState
 import com.varisahayak.core.designsystem.component.RoleBadge
 import com.varisahayak.core.designsystem.component.VariPrimaryButton
 
@@ -52,7 +52,7 @@ fun ProfileScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     if (uiState.isLoading && uiState.profile == null) {
-        LoadingState(modifier = modifier)
+        ShimmerLoadingState(modifier = modifier)
         return
     }
 
