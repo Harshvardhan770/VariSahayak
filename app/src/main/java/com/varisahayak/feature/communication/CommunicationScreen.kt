@@ -620,7 +620,7 @@ private fun ChatInput(
                 modifier = Modifier.padding(bottom = Dimens.SpaceXs)
             )
         }
-        
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically

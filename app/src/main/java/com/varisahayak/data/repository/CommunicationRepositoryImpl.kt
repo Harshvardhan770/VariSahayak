@@ -1,32 +1,58 @@
 package com.varisahayak.data.repository
 
+import android.util.Log
+import com.varisahayak.core.common.AppError
 import com.varisahayak.core.common.Outcome
 import com.varisahayak.domain.model.CommunicationChannel
 import com.varisahayak.domain.model.CommunicationMessage
 import com.varisahayak.domain.repository.CommunicationRepository
-import kotlinx.coroutines.delay
+import com.varisahayak.domain.repository.ProfileRepository
+import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.realtime.RealtimeChannel
+import io.github.jan.supabase.realtime.broadcast
+import io.github.jan.supabase.realtime.broadcastFlow
+import io.github.jan.supabase.realtime.channel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import kotlinx.datetime.Instant
-import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.minutes
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class CommunicationRepositoryImpl @Inject constructor() : CommunicationRepository {
+class CommunicationRepositoryImpl @Inject constructor(
+    private val supabase: SupabaseClient,
+    private val profileRepository: ProfileRepository,
+) : CommunicationRepository {
 
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val _channels = MutableStateFlow(initialChannels())
-    private val _messages = MutableStateFlow(initialMessages())
+    
+    private val activeChannels = mutableMapOf<String, RealtimeChannel>()
 
     override fun observeChannels(): Flow<List<CommunicationChannel>> = _channels
 
-    override fun observeMessages(channelId: String): Flow<List<CommunicationMessage>> {
-        return _messages.map { allMessages ->
-            allMessages.filter { it.channelId == channelId }
-                .sortedBy { it.timestamp }
+    override fun observeMessages(channelId: String): Flow<CommunicationMessage> {
+        val channel = getOrCreateChannel(channelId)
+        return channel.broadcastFlow<CommunicationMessage>(event = "message")
+    }
+
+    private fun getOrCreateChannel(channelId: String): RealtimeChannel {
+        return activeChannels.getOrPut(channelId) {
+            supabase.channel("comms:$channelId").also {
+                scope.launch {
+                    try {
+                        it.subscribe()
+                    } catch (e: Exception) {
+                        Log.e("CommsRepo", "Failed to subscribe to channel $channelId", e)
+                    }
+                }
+            }
         }
     }
 
@@ -34,26 +60,37 @@ class CommunicationRepositoryImpl @Inject constructor() : CommunicationRepositor
         channelIds: List<String>,
         content: String,
         isSos: Boolean
-    ): Outcome<Unit> {
-        delay(500.milliseconds) // Simulate network
+    ): Outcome<List<CommunicationMessage>> {
+        val profile = profileRepository.observeCurrentProfile().first() 
+            ?: return Outcome.Failure(AppError.ProfileUnavailable())
+        
         val now = Instant.fromEpochMilliseconds(System.currentTimeMillis())
+        val sentMessages = mutableListOf<CommunicationMessage>()
         
         channelIds.forEach { channelId ->
-            val newMessage = CommunicationMessage(
-                id = "msg_${now.toEpochMilliseconds()}_$channelId",
+            val message = CommunicationMessage(
+                id = "msg_${System.nanoTime()}",
                 channelId = channelId,
-                senderId = "me",
-                senderName = "You",
-                senderRole = "Admin",
+                senderId = profile.userId,
+                senderName = profile.displayName,
+                senderRole = profile.role.name,
                 content = content,
                 timestamp = now,
                 isSos = isSos,
-                isFromMe = true
+                isFromMe = false // Relative to others
             )
-            _messages.update { it + newMessage }
+
+            try {
+                val realtimeChannel = getOrCreateChannel(channelId)
+                realtimeChannel.broadcast("message", message)
+                // Add the local version (with isFromMe = true) to the return list
+                sentMessages.add(message.copy(isFromMe = true))
+            } catch (e: Exception) {
+                Log.e("CommsRepo", "Failed to broadcast message to $channelId", e)
+            }
         }
         
-        return Outcome.Success(Unit)
+        return Outcome.Success(sentMessages)
     }
 
     override suspend fun markAsRead(channelId: String): Outcome<Unit> {
@@ -70,21 +107,20 @@ class CommunicationRepositoryImpl @Inject constructor() : CommunicationRepositor
             id = "all_hands",
             name = "All Hands",
             description = "Broadcast to all",
-            onlineCount = 9812,
-            unreadCount = 3
+            onlineCount = 0,
+            unreadCount = 0
         ),
         CommunicationChannel(
             id = "medical",
             name = "Medical Team",
             description = "Doctors, Nurses",
-            onlineCount = 145,
-            unreadCount = 1
+            onlineCount = 0
         ),
         CommunicationChannel(
             id = "police",
             name = "Police",
             description = "Security, Patrol",
-            onlineCount = 82
+            onlineCount = 0
         ),
         CommunicationChannel(
             id = "pandharpur_zone",
@@ -96,47 +132,6 @@ class CommunicationRepositoryImpl @Inject constructor() : CommunicationRepositor
             id = "lonand_zone",
             name = "Lonand Zone",
             description = "km 140-155"
-        )
-    )
-
-    private fun initialMessages() = listOf(
-        CommunicationMessage(
-            id = "m1",
-            channelId = "all_hands",
-            senderId = "s1",
-            senderName = "Suresh Kale",
-            senderRole = "Pune Zone",
-            content = "Crowd is building up near Swargate. Requesting 2 more volunteers.",
-            timestamp = Instant.fromEpochMilliseconds(System.currentTimeMillis()).minus(15.minutes)
-        ),
-        CommunicationMessage(
-            id = "m2",
-            channelId = "all_hands",
-            senderId = "me",
-            senderName = "You",
-            senderRole = "Admin",
-            content = "Assigning Batch 7 - 3 volunteers dispatched to Swargate junction.",
-            timestamp = Instant.fromEpochMilliseconds(System.currentTimeMillis()).minus(14.minutes),
-            isFromMe = true
-        ),
-        CommunicationMessage(
-            id = "m3",
-            channelId = "all_hands",
-            senderId = "system",
-            senderName = "SOS",
-            senderRole = "System",
-            content = "SOS ALERT: Medical emergency at Lonand Bridge. VS-0087 activated SOS.",
-            timestamp = Instant.fromEpochMilliseconds(System.currentTimeMillis()).minus(6.minutes),
-            isSos = true
-        ),
-        CommunicationMessage(
-            id = "m4",
-            channelId = "all_hands",
-            senderId = "s2",
-            senderName = "Dr. Anita More",
-            senderRole = "Medical",
-            content = "Medical team dispatched. ETA 4 minutes.",
-            timestamp = Instant.fromEpochMilliseconds(System.currentTimeMillis()).minus(2.minutes)
         )
     )
 }
