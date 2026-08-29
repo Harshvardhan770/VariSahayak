@@ -39,13 +39,49 @@ fun VariPrimaryButton(
     icon: ImageVector? = null,
     enabled: Boolean = true,
 ) {
+    val colors = VariTheme.colors
     Button(
         onClick = onClick,
         enabled = enabled,
         shape = RoundedCornerShape(Dimens.CornerMd),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = colors.brandSolid,
+            contentColor = colors.onBrandSolid,
+        ),
         modifier = modifier
             .fillMaxWidth()
             .height(Dimens.PrimaryActionHeight),
+    ) {
+        ButtonContent(text = text, icon = icon)
+    }
+}
+
+/**
+ * The in-card action: "Accept", "Dispatch", "Resolve".
+ *
+ * Exactly [Dimens.MinTouchTarget] tall and no shorter. This is the control a responder
+ * hits under time pressure on a moving list, so it gets the floor, not a compact variant
+ * of it.
+ */
+@Composable
+fun VariActionButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    icon: ImageVector? = null,
+    enabled: Boolean = true,
+    destructive: Boolean = false,
+) {
+    val colors = VariTheme.colors
+    Button(
+        onClick = onClick,
+        enabled = enabled,
+        shape = RoundedCornerShape(Dimens.CornerMd),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = if (destructive) colors.critical else colors.brandSolid,
+            contentColor = if (destructive) colors.onCritical else colors.onBrandSolid,
+        ),
+        modifier = modifier.defaultMinSize(minHeight = Dimens.MinTouchTarget),
     ) {
         ButtonContent(text = text, icon = icon)
     }
@@ -59,10 +95,13 @@ fun VariSecondaryButton(
     icon: ImageVector? = null,
     enabled: Boolean = true,
 ) {
+    val colors = VariTheme.colors
     OutlinedButton(
         onClick = onClick,
         enabled = enabled,
         shape = RoundedCornerShape(Dimens.CornerMd),
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.textPrimary),
+        border = androidx.compose.foundation.BorderStroke(Dimens.Hairline, colors.cardBorderHover),
         modifier = modifier.defaultMinSize(minHeight = Dimens.MinTouchTarget),
     ) {
         ButtonContent(text = text, icon = icon)

@@ -1,44 +1,48 @@
 package com.varisahayak.app.navigation
 
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.CloudOff
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarDefaults
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.toRoute
 import com.varisahayak.R
 import com.varisahayak.app.MainViewModel
 import com.varisahayak.core.designsystem.Dimens
-import com.varisahayak.core.designsystem.component.RoleBadge
+import com.varisahayak.core.designsystem.VariTheme
+import com.varisahayak.core.designsystem.component.FloatingTopBar
+import com.varisahayak.core.designsystem.component.WalkieTalkieWidget
+import com.varisahayak.core.locale.AppLocale
+import com.varisahayak.core.walkie.WalkieUiState
 import com.varisahayak.domain.model.UserRole
 import com.varisahayak.domain.repository.AuthState
+import com.varisahayak.feature.auth.ForgotPasswordScreen
 import com.varisahayak.feature.auth.SignInScreen
 import com.varisahayak.feature.auth.SignInViewModel
 import com.varisahayak.feature.auth.SignUpScreen
@@ -47,7 +51,6 @@ import com.varisahayak.feature.dashboard.CommandDashboardScreen
 import com.varisahayak.feature.dashboard.DashboardViewModel
 import com.varisahayak.feature.dashboard.ResponderDashboardScreen
 import com.varisahayak.feature.dashboard.VolunteerDashboardScreen
-import com.varisahayak.feature.auth.ForgotPasswordScreen
 import com.varisahayak.feature.incidents.IncidentDetailScreen
 import com.varisahayak.feature.incidents.IncidentListScreen
 import com.varisahayak.feature.incidents.ReportIncidentScreen
@@ -57,17 +60,25 @@ import com.varisahayak.feature.profile.ProfileScreen
 import com.varisahayak.feature.profile.ProfileViewModel
 import com.varisahayak.feature.qr.QrScannerScreen
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VariSahayakApp(
+    currentLocale: AppLocale,
+    onLocaleChange: (AppLocale) -> Unit,
     viewModel: MainViewModel = hiltViewModel(),
 ) {
     val navController = rememberNavController()
     val authState by viewModel.authState.collectAsState(initial = AuthState.Unknown)
     val profile by viewModel.profile.collectAsState(initial = null)
+    val isOnline by viewModel.isOnline.collectAsState(initial = true)
+    val walkieState by viewModel.walkieState.collectAsState(initial = WalkieUiState())
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
 
     val currentRoute = currentBackStackEntry?.destination?.route
+
+    // Radio visibility is a user preference for the session, not app state — it survives
+    // rotation but is deliberately not persisted across launches.
+    var walkieVisible by rememberSaveable { mutableStateOf(false) }
+    var walkieExpanded by rememberSaveable { mutableStateOf(true) }
 
     // Auth navigation state machine
     LaunchedEffect(authState, profile) {
@@ -108,216 +119,316 @@ fun VariSahayakApp(
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
+        // Transparent so the theme canvas set by MainActivity shows through. A Scaffold
+        // that paints its own background would put a second, subtly different surface
+        // under every screen.
+        containerColor = Color.Transparent,
         topBar = {
             if (!isAuthOrSplash) {
-                TopAppBar(
-                    title = {
-                        Text(
-                            text = stringResource(R.string.app_name),
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.titleLarge,
-                        )
-                    },
-                    actions = {
-                        profile?.role?.let { role ->
-                            RoleBadge(role = role)
-                        }
-
-                        IconButton(onClick = { navController.navigate(Destination.Profile) }) {
-                            Icon(
-                                imageVector = Icons.Filled.AccountCircle,
-                                contentDescription = stringResource(R.string.nav_profile),
-                                modifier = Modifier.size(28.dp),
-                            )
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                    ),
+                FloatingTopBar(
+                    title = stringResource(currentRoute.titleRes()),
+                    role = profile?.role,
+                    isOnline = isOnline,
+                    locale = currentLocale,
+                    onLocaleChange = onLocaleChange,
+                    walkieEnabled = walkieVisible,
+                    onToggleWalkie = { walkieVisible = !walkieVisible },
+                    modifier = Modifier
+                        .statusBarsPadding()
+                        .padding(
+                            horizontal = Dimens.FloatingInset,
+                            vertical = Dimens.SpaceSm,
+                        ),
                 )
             }
         },
         bottomBar = {
             if (!isAuthOrSplash && profile != null) {
-                val destinations = TopLevelDestination.forRole(currentRole)
-                NavigationBar {
-                    destinations.forEach { dest ->
-                        val isSelected = currentRoute?.contains(dest.route::class.simpleName ?: "") == true
-                        NavigationBarItem(
-                            selected = isSelected,
-                            onClick = {
-                                navController.navigate(dest.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
-                                    }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            },
-                            icon = {
-                                Icon(
-                                    imageVector = dest.icon,
-                                    contentDescription = stringResource(dest.labelRes),
-                                )
-                            },
-                            label = { Text(stringResource(dest.labelRes)) },
+                // The radio docks above the navigation bar rather than floating over the
+                // content.
+                //
+                // As an overlay it covered whatever happened to be in the bottom-left
+                // corner — on the volunteer dashboard that is the SOS button, which is the
+                // one control in this app that must never be obscured. Living in the
+                // bottomBar slot means Scaffold folds its height into the content inset, so
+                // every screen reflows around it and no overlap is possible at any size.
+                Column {
+                    if (walkieVisible) {
+                        WalkieTalkieWidget(
+                            state = walkieState,
+                            expanded = walkieExpanded,
+                            onToggleExpanded = { walkieExpanded = !walkieExpanded },
+                            onStartTransmit = viewModel::startTransmit,
+                            onStopTransmit = viewModel::stopTransmit,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(
+                                    start = Dimens.FloatingInset,
+                                    end = Dimens.FloatingInset,
+                                    bottom = Dimens.SpaceSm,
+                                ),
                         )
                     }
+
+                    VariNavigationBar(
+                        destinations = TopLevelDestination.forRole(currentRole),
+                        currentRoute = currentRoute,
+                        onSelect = { dest ->
+                            navController.navigate(dest.route) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        },
+                    )
                 }
             }
         },
     ) { innerPadding ->
-        NavHost(
+        VariNavHost(
             navController = navController,
-            startDestination = Destination.Splash,
             modifier = Modifier.padding(innerPadding),
-        ) {
-            composable<Destination.Splash> {
-                SplashScreen()
-            }
+        )
+    }
+}
 
-            composable<Destination.SignIn> {
-                val signInViewModel: SignInViewModel = hiltViewModel()
-                SignInScreen(
-                    viewModel = signInViewModel,
-                    onNavigateToSignUp = { navController.navigate(Destination.SignUp) },
-                )
-            }
+/**
+ * The bottom bar.
+ *
+ * Kept opaque rather than frosted. Unlike the top bar it is not floating over content, and
+ * a translucent navigation bar over a scrolling list produces exactly the shifting,
+ * unreadable labels this design is trying to avoid.
+ */
+@Composable
+private fun VariNavigationBar(
+    destinations: List<TopLevelDestination>,
+    currentRoute: String?,
+    onSelect: (TopLevelDestination) -> Unit,
+) {
+    val colors = VariTheme.colors
+    NavigationBar(
+        containerColor = colors.cardSurface,
+        contentColor = colors.textPrimary,
+        tonalElevation = NavigationBarDefaults.Elevation,
+    ) {
+        destinations.forEach { dest ->
+            val isSelected = currentRoute?.contains(dest.route::class.simpleName ?: "") == true
+            NavigationBarItem(
+                selected = isSelected,
+                onClick = { onSelect(dest) },
+                icon = {
+                    Icon(
+                        imageVector = dest.icon,
+                        contentDescription = null,
+                    )
+                },
+                label = {
+                    Text(
+                        text = stringResource(dest.labelRes),
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+                },
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = colors.onBrandSubtle,
+                    selectedTextColor = colors.onBrandSubtle,
+                    indicatorColor = colors.brandSubtle,
+                    unselectedIconColor = colors.textMuted,
+                    unselectedTextColor = colors.textMuted,
+                ),
+            )
+        }
+    }
+}
 
-            composable<Destination.SignUp> {
-                val signUpViewModel: SignUpViewModel = hiltViewModel()
-                SignUpScreen(
-                    viewModel = signUpViewModel,
-                    onNavigateBack = { navController.popBackStack() },
-                    onSignUpSuccess = {
-                        navController.navigate(Destination.SignIn) {
-                            popUpTo(Destination.SignUp) { inclusive = true }
-                        }
-                    },
-                )
-            }
+/**
+ * Maps the current route to its bar title.
+ *
+ * Route matching is by substring because the type-safe routes serialise to fully-qualified
+ * class names, and matching the simple name is the cheapest thing that stays correct when
+ * arguments are appended.
+ */
+private fun String?.titleRes(): Int = when {
+    this == null -> R.string.app_name
+    contains("IncidentMap") -> R.string.map_title
+    contains("IncidentList") -> R.string.nav_incidents
+    contains("IncidentDetail") -> R.string.incident_detail_title
+    contains("ReportIncident") -> R.string.report_title
+    contains("QrScanner") -> R.string.qr_scan_title
+    contains("LostAndFound") -> R.string.lostfound_title
+    contains("Profile") -> R.string.profile_title
+    contains("CommandDashboard") || contains("AdminDashboard") -> R.string.command_title
+    contains("Dashboard") -> R.string.nav_dashboard
+    else -> R.string.app_name
+}
 
-            composable<Destination.ForgotPassword> {
-                ForgotPasswordScreen(onNavigateBack = { navController.popBackStack() })
-            }
+@Composable
+private fun VariNavHost(
+    navController: androidx.navigation.NavHostController,
+    modifier: Modifier = Modifier,
+) {
+    NavHost(
+        navController = navController,
+        startDestination = Destination.Splash,
+        modifier = modifier,
+    ) {
+        composable<Destination.Splash> {
+            SplashScreen()
+        }
 
-            composable<Destination.VolunteerDashboard> {
-                val dashboardViewModel: DashboardViewModel = hiltViewModel()
-                VolunteerDashboardScreen(
-                    viewModel = dashboardViewModel,
-                    onNavigateToReport = { navController.navigate(Destination.ReportIncident()) },
-                    onNavigateToScan = { navController.navigate(Destination.QrScanner) },
-                    onNavigateToMap = { navController.navigate(Destination.IncidentMap) },
-                    onNavigateToLostFound = { navController.navigate(Destination.LostAndFound) },
-                    onNavigateToDetail = { clientId ->
-                        navController.navigate(Destination.IncidentDetail(clientId))
-                    },
-                )
-            }
+        composable<Destination.SignIn> {
+            val signInViewModel: SignInViewModel = hiltViewModel()
+            SignInScreen(
+                viewModel = signInViewModel,
+                onNavigateToSignUp = { navController.navigate(Destination.SignUp) },
+            )
+        }
 
-            composable<Destination.ResponderDashboard> {
-                val dashboardViewModel: DashboardViewModel = hiltViewModel()
-                ResponderDashboardScreen(
-                    viewModel = dashboardViewModel,
-                    onNavigateToDetail = { clientId ->
-                        navController.navigate(Destination.IncidentDetail(clientId))
-                    },
-                )
-            }
+        composable<Destination.SignUp> {
+            val signUpViewModel: SignUpViewModel = hiltViewModel()
+            SignUpScreen(
+                viewModel = signUpViewModel,
+                onNavigateBack = { navController.popBackStack() },
+                onSignUpSuccess = {
+                    navController.navigate(Destination.SignIn) {
+                        popUpTo(Destination.SignUp) { inclusive = true }
+                    }
+                },
+            )
+        }
 
-            composable<Destination.CommandDashboard> {
-                val dashboardViewModel: DashboardViewModel = hiltViewModel()
-                CommandDashboardScreen(
-                    viewModel = dashboardViewModel,
-                    onNavigateToDetail = { clientId ->
-                        navController.navigate(Destination.IncidentDetail(clientId))
-                    },
-                )
-            }
+        composable<Destination.ForgotPassword> {
+            ForgotPasswordScreen(onNavigateBack = { navController.popBackStack() })
+        }
 
-            composable<Destination.AdminDashboard> {
-                val dashboardViewModel: DashboardViewModel = hiltViewModel()
-                CommandDashboardScreen(
-                    viewModel = dashboardViewModel,
-                    onNavigateToDetail = { clientId ->
-                        navController.navigate(Destination.IncidentDetail(clientId))
-                    },
-                )
-            }
+        composable<Destination.VolunteerDashboard> {
+            val dashboardViewModel: DashboardViewModel = hiltViewModel()
+            VolunteerDashboardScreen(
+                viewModel = dashboardViewModel,
+                onNavigateToReport = { navController.navigate(Destination.ReportIncident()) },
+                onNavigateToScan = { navController.navigate(Destination.QrScanner) },
+                onNavigateToMap = { navController.navigate(Destination.IncidentMap) },
+                onNavigateToLostFound = { navController.navigate(Destination.LostAndFound) },
+                onNavigateToDetail = { clientId ->
+                    navController.navigate(Destination.IncidentDetail(clientId))
+                },
+            )
+        }
 
-            composable<Destination.IncidentList> {
-                IncidentListScreen(
-                    onIncidentSelected = { clientId ->
-                        navController.navigate(Destination.IncidentDetail(clientId))
-                    },
-                )
-            }
+        composable<Destination.ResponderDashboard> {
+            val dashboardViewModel: DashboardViewModel = hiltViewModel()
+            ResponderDashboardScreen(
+                viewModel = dashboardViewModel,
+                onNavigateToDetail = { clientId ->
+                    navController.navigate(Destination.IncidentDetail(clientId))
+                },
+            )
+        }
 
-            composable<Destination.IncidentDetail> {
-                IncidentDetailScreen()
-            }
+        composable<Destination.CommandDashboard> {
+            val dashboardViewModel: DashboardViewModel = hiltViewModel()
+            CommandDashboardScreen(
+                viewModel = dashboardViewModel,
+                onNavigateToDetail = { clientId ->
+                    navController.navigate(Destination.IncidentDetail(clientId))
+                },
+            )
+        }
 
-            composable<Destination.IncidentMap> {
-                IncidentMapScreen(
-                    onIncidentSelected = { clientId ->
-                        navController.navigate(Destination.IncidentDetail(clientId))
-                    },
-                )
-            }
+        composable<Destination.AdminDashboard> {
+            val dashboardViewModel: DashboardViewModel = hiltViewModel()
+            CommandDashboardScreen(
+                viewModel = dashboardViewModel,
+                onNavigateToDetail = { clientId ->
+                    navController.navigate(Destination.IncidentDetail(clientId))
+                },
+            )
+        }
 
-            composable<Destination.QrScanner> {
-                QrScannerScreen(
-                    onTokenAccepted = { token ->
-                        navController.navigate(
-                            Destination.ReportIncident(
-                                sosBridgeToken = token.value,
-                                isSos = true,
-                            ),
-                        )
-                    },
-                )
-            }
+        composable<Destination.IncidentList> {
+            IncidentListScreen(
+                onIncidentSelected = { clientId ->
+                    navController.navigate(Destination.IncidentDetail(clientId))
+                },
+            )
+        }
 
-            composable<Destination.LostAndFound> {
-                LostFoundScreen()
-            }
+        composable<Destination.IncidentDetail> {
+            IncidentDetailScreen()
+        }
 
-            composable<Destination.ReportIncident> {
-                ReportIncidentScreen(
-                    onSaved = { clientId ->
-                        // Replace the form in the back stack: pressing back after filing a
-                        // report must not reopen a form that was already submitted.
-                        navController.navigate(Destination.IncidentDetail(clientId)) {
-                            popUpTo(Destination.ReportIncident()) { inclusive = true }
-                        }
-                    },
-                )
-            }
+        composable<Destination.IncidentMap> {
+            IncidentMapScreen(
+                onIncidentSelected = { clientId ->
+                    navController.navigate(Destination.IncidentDetail(clientId))
+                },
+            )
+        }
 
-            composable<Destination.Profile> {
-                val profileViewModel: ProfileViewModel = hiltViewModel()
-                ProfileScreen(
-                    viewModel = profileViewModel,
-                    onSignOut = {
-                        navController.navigate(Destination.SignIn) {
-                            popUpTo(0) { inclusive = true }
-                        }
-                    },
-                )
-            }
+        composable<Destination.QrScanner> {
+            QrScannerScreen(
+                onTokenAccepted = { token ->
+                    navController.navigate(
+                        Destination.ReportIncident(
+                            sosBridgeToken = token.value,
+                            isSos = true,
+                        ),
+                    )
+                },
+            )
+        }
+
+        composable<Destination.LostAndFound> {
+            LostFoundScreen()
+        }
+
+        composable<Destination.ReportIncident> {
+            ReportIncidentScreen(
+                onSaved = { clientId ->
+                    // Replace the form in the back stack: pressing back after filing a
+                    // report must not reopen a form that was already submitted.
+                    navController.navigate(Destination.IncidentDetail(clientId)) {
+                        popUpTo(Destination.ReportIncident()) { inclusive = true }
+                    }
+                },
+            )
+        }
+
+        composable<Destination.Profile> {
+            val profileViewModel: ProfileViewModel = hiltViewModel()
+            ProfileScreen(
+                viewModel = profileViewModel,
+                onSignOut = {
+                    navController.navigate(Destination.SignIn) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
+            )
         }
     }
 }
 
 @Composable
 private fun SplashScreen() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
+    val colors = VariTheme.colors
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .navigationBarsPadding(),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
             text = stringResource(R.string.app_name),
             style = MaterialTheme.typography.headlineLarge,
+            color = colors.textPrimary,
+        )
+        Text(
+            text = stringResource(R.string.auth_checking_session),
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.textMuted,
+            modifier = Modifier.padding(top = Dimens.SpaceSm),
         )
     }
 }

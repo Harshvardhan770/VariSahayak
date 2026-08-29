@@ -41,9 +41,15 @@ data class IncidentDto(
 /**
  * Payload for creating or replaying an incident.
  *
- * Server-owned fields (status, priority, assignee) are deliberately excluded: the device
- * proposes an incident, the server decides how it is triaged. Sending them would let a
- * replayed offline write stomp a triage decision made while the device was disconnected.
+ * Status and assignment are server-owned and stay excluded: the device proposes an
+ * incident, the server decides how it is routed.
+ *
+ * Priority is different. It is computed on-device by [PriorityEngine], deterministically
+ * and without a network — an SOS is CRITICAL before anything is uploaded. Omitting it
+ * meant every synced incident fell back to the column default of MEDIUM, so a critical
+ * report reached the responder's dashboard indistinguishable from a routine one. The
+ * `incidents_preserve_triage` trigger is what stops a replayed offline write from undoing
+ * a later triage decision.
  */
 @Serializable
 data class IncidentUpsertDto(
@@ -58,6 +64,7 @@ data class IncidentUpsertDto(
     @SerialName("reported_at") val reportedAt: String,
     @SerialName("photo_path") val photoPath: String? = null,
     @SerialName("affected_person_note") val affectedPersonNote: String? = null,
+    @SerialName("priority") val priority: String,
     @SerialName("is_sos") val isSos: Boolean = false,
     @SerialName("sos_bridge_token") val sosBridgeToken: String? = null,
     @SerialName("area_id") val areaId: String? = null,
@@ -138,6 +145,7 @@ fun IncidentEntity.toUpsertDto(reportedAtIso: String): IncidentUpsertDto = Incid
     reportedAt = reportedAtIso,
     photoPath = photoRemotePath,
     affectedPersonNote = affectedPersonNote,
+    priority = priority,
     isSos = isSos,
     sosBridgeToken = sosBridgeToken,
     areaId = areaId,

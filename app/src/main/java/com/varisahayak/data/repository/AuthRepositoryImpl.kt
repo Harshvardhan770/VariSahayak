@@ -73,17 +73,19 @@ class AuthRepositoryImpl @Inject constructor(
      * would have no session to authenticate with when email confirmation is enabled, and
      * would leave an orphaned account if the app died between the two calls.
      *
-     * [role] is accepted for the sign-up form's benefit but is deliberately **not** sent
-     * to the server. The trigger always assigns VOLUNTEER; trusting a client-supplied
-     * role would let anyone self-register as an administrator.
+     * [role] and [organisationName] are sent as user metadata and are a *request*. The
+     * `handle_new_user` trigger decides what is actually granted: it honours the role
+     * only when `roles.self_assignable` is true for it and silently falls back to
+     * VOLUNTEER otherwise, so a tampered payload cannot self-grant ADMINISTRATOR.
      */
     override suspend fun signUp(
         email: String,
         password: String,
         displayName: String,
         role: UserRole,
+        organisationName: String?,
     ): Outcome<SignUpResult> = withContext(dispatchers.io) {
-        val validation = validateSignUp(email, password, displayName)
+        val validation = validateSignUp(email, password, displayName, role, organisationName)
         if (validation != null) return@withContext Outcome.Failure(validation)
 
         if (!connectivity.isCurrentlyOnline()) {
@@ -96,6 +98,12 @@ class AuthRepositoryImpl @Inject constructor(
                 this.password = password
                 data = buildJsonObject {
                     put("display_name", displayName.trim())
+                    put("role", role.wireName)
+                    // Only sent when it means something. A blank key would make the
+                    // trigger create an organisation named "" for every volunteer.
+                    organisationName?.trim()
+                        ?.takeIf { it.isNotEmpty() }
+                        ?.let { put("organisation_name", it) }
                 }
             }
 
@@ -160,8 +168,14 @@ class AuthRepositoryImpl @Inject constructor(
         email: String,
         password: String,
         displayName: String,
+        role: UserRole,
+        organisationName: String?,
     ): AppError? = when {
         displayName.isBlank() -> AppError.Validation(FIELD_NAME, MSG_NAME_REQUIRED)
+        // Checked before the network call so a responder is told what is missing rather
+        // than being handed the trigger's rejection. The database enforces it too.
+        role.isResponder && organisationName.isNullOrBlank() ->
+            AppError.Validation(FIELD_ORGANISATION, MSG_ORGANISATION_REQUIRED)
         email.isBlank() -> AppError.Validation(FIELD_EMAIL, MSG_EMAIL_REQUIRED)
         !isValidEmail(email) -> AppError.Validation(FIELD_EMAIL, MSG_EMAIL_INVALID)
         password.isBlank() -> AppError.Validation(FIELD_PASSWORD, MSG_PASSWORD_REQUIRED)
@@ -192,6 +206,15 @@ class AuthRepositoryImpl @Inject constructor(
                 "duplicate key" in text ->
                 AppError.Validation(FIELD_EMAIL, MSG_EMAIL_TAKEN, this)
 
+            // The database enforces the responder/organisation rule as well as the form.
+            // GoTrue usually collapses a trigger exception to "database error saving new
+            // user", so both spellings are matched.
+            "organisation_name is required" in text ->
+                AppError.Validation(FIELD_ORGANISATION, MSG_ORGANISATION_REQUIRED, this)
+
+            "database error saving new user" in text ->
+                AppError.Validation(field = null, message = MSG_SIGN_UP_REJECTED, cause = this)
+
             "invalid login credentials" in text || "invalid_credentials" in text ->
                 AppError.Validation(field = null, message = MSG_INVALID_CREDENTIALS, cause = this)
 
@@ -220,6 +243,7 @@ class AuthRepositoryImpl @Inject constructor(
         const val FIELD_EMAIL = "email"
         const val FIELD_PASSWORD = "password"
         const val FIELD_NAME = "displayName"
+        const val FIELD_ORGANISATION = "organisationName"
 
         const val MSG_EMAIL_REQUIRED = "Enter your email address."
         const val MSG_EMAIL_INVALID = "That does not look like a valid email address."
@@ -231,6 +255,10 @@ class AuthRepositoryImpl @Inject constructor(
         const val MSG_NAME_REQUIRED = "Enter your full name."
         const val MSG_INVALID_CREDENTIALS = "Email or password is incorrect."
         const val MSG_RATE_LIMITED = "Too many attempts. Wait a minute and try again."
+        const val MSG_ORGANISATION_REQUIRED =
+            "Enter the organisation you respond for — your hospital, unit, or NGO."
+        const val MSG_SIGN_UP_REJECTED =
+            "Sign-up could not be completed. Check your details and try again."
 
         val EMAIL_PATTERN = Regex("""^[\w.+-]+@[\w-]+\.[\w.-]{2,}$""")
     }

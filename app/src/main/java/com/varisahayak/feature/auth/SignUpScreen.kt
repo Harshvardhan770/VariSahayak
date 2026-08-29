@@ -6,6 +6,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Badge
+import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Work
@@ -20,6 +21,9 @@ import androidx.compose.ui.unit.dp
 import com.varisahayak.R
 import com.varisahayak.core.common.AppError
 import com.varisahayak.domain.model.UserRole
+
+/** Matches the field name AuthRepositoryImpl tags its organisation validation error with. */
+private const val FIELD_ORGANISATION = "organisationName"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -154,6 +158,31 @@ fun SignUpScreen(
                                     )
                                 }
                             }
+                        }
+
+                        // Responders only. A responder with no organisation cannot be
+                        // routed to, so the field appears — and is required — the moment
+                        // a responder role is picked, and disappears again if it is not.
+                        if (uiState.requiresOrganisation) {
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            OutlinedTextField(
+                                value = uiState.organisationName,
+                                onValueChange = viewModel::onOrganisationNameChanged,
+                                label = { Text(stringResource(R.string.auth_organisation_name)) },
+                                supportingText = {
+                                    Text(stringResource(R.string.auth_organisation_helper))
+                                },
+                                isError = (uiState.error as? AppError.Validation)
+                                    ?.field == FIELD_ORGANISATION,
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                enabled = !uiState.isLoading,
+                                leadingIcon = {
+                                    Icon(Icons.Default.Business, contentDescription = null)
+                                },
+                                shape = MaterialTheme.shapes.medium
+                            )
                         }
 
                         Spacer(modifier = Modifier.height(16.dp))

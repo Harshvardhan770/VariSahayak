@@ -210,4 +210,57 @@
     <string name="auth_reset_send">रीसेट लिंक भेजें</string>
     <string name="auth_reset_sent">यदि उस पते पर खाता है, तो रीसेट लिंक भेज दिया गया है।</string>
     <string name="auth_signup_confirm_email">खाता बन गया। %1$s पर पुष्टि लिंक देखें, फिर साइन इन करें।</string>
+    <string name="auth_organisation_name">संगठन का नाम</string>
+    <string name="auth_organisation_helper">आवश्यक — वह अस्पताल, इकाई या गैर-सरकारी संगठन जिसकी ओर से आप कार्य करते हैं।</string>
+
+    <!-- ============ UI layer: network, sync, distance, time ============ -->
+    <string name="network_online">ऑनलाइन</string>
+    <string name="network_local_sync_ready">लोकल सिंक तैयार</string>
+    <plurals name="sync_waiting_count">
+        <item quantity="one">%d सिंक के लिए बाकी</item>
+        <item quantity="other">%d सिंक के लिए बाकी</item>
+    </plurals>
+    <string name="cd_sync_retry">%1$s. अभी पुनः प्रयास करने के लिए टैप करें।</string>
+
+    <string name="distance_here">यहीं</string>
+    <string name="distance_metres">%1$d मी दूर</string>
+    <string name="distance_kilometres">%1$s किमी दूर</string>
+
+    <string name="time_just_now">अभी</string>
+    <string name="time_minutes_ago">%1$d मिनट पहले</string>
+    <string name="time_hours_ago">%1$d घंटे पहले</string>
+    <string name="time_days_ago">%1$d दिन पहले</string>
+
+    <!-- ============ filters, badges, actions ============ -->
+    <string name="filter_all">सभी</string>
+    <string name="badge_sos">SOS</string>
+    <string name="action_dispatch">भेजें</string>
+
+    <!-- ============ dashboard ============ -->
+    <string name="dashboard_quick_actions">त्वरित कार्य</string>
+    <string name="dashboard_open_incidents">खुली घटनाएँ</string>
+
+    <!-- ============ map ============ -->
+    <string name="map_active_incidents">सक्रिय घटनाएँ</string>
+    <string name="map_no_incidents">इस क्षेत्र में कोई खुली घटना नहीं</string>
+    <string name="map_drawer_expand">घटना सूची दिखाएँ</string>
+    <string name="map_drawer_collapse">घटना सूची छिपाएँ</string>
+
+    <!-- ============ walkie-talkie ============ -->
+    <string name="walkie_expand">रेडियो पैनल खोलें</string>
+    <string name="walkie_collapse">रेडियो पैनल बंद करें</string>
+    <string name="walkie_show">रेडियो दिखाएँ</string>
+    <string name="walkie_hide">रेडियो छिपाएँ</string>
+    <string name="walkie_speaking">%1$s बोल रहे हैं</string>
+    <string name="walkie_on_air">प्रसारण जारी</string>
+    <string name="walkie_disconnected">कनेक्शन टूटा</string>
+    <string name="walkie_connecting">जोड़ा जा रहा है…</string>
+    <string name="walkie_no_transport">डेमो — रेडियो चालू नहीं</string>
+    <string name="walkie_members">%1$d चैनल पर</string>
+    <string name="walkie_busy">चैनल व्यस्त</string>
+    <string name="walkie_unavailable">रेडियो उपलब्ध नहीं</string>
+    <string name="walkie_hold_to_talk">बोलने के लिए दबाए रखें</string>
+    <string name="cd_walkie_active">आवाज़ गतिविधि</string>
+    <string name="cd_walkie_idle">चैनल शांत</string>
+
 </resources>

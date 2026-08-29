@@ -242,4 +242,57 @@
     <string name="auth_reset_send">Send reset link</string>
     <string name="auth_reset_sent">If an account exists for that address, a reset link is on its way.</string>
     <string name="auth_signup_confirm_email">Account created. Check %1$s for a confirmation link, then sign in.</string>
+    <string name="auth_organisation_name">Organisation name</string>
+    <string name="auth_organisation_helper">Required — the hospital, unit, or NGO you respond for.</string>
+
+    <!-- ============ UI layer: network, sync, distance, time ============ -->
+    <string name="network_online">Online</string>
+    <string name="network_local_sync_ready">Local sync ready</string>
+    <plurals name="sync_waiting_count">
+        <item quantity="one">%d waiting to sync</item>
+        <item quantity="other">%d waiting to sync</item>
+    </plurals>
+    <string name="cd_sync_retry">%1$s. Tap to retry now.</string>
+
+    <string name="distance_here">Here</string>
+    <string name="distance_metres">%1$d m away</string>
+    <string name="distance_kilometres">%1$s km away</string>
+
+    <string name="time_just_now">Just now</string>
+    <string name="time_minutes_ago">%1$d min ago</string>
+    <string name="time_hours_ago">%1$d h ago</string>
+    <string name="time_days_ago">%1$d d ago</string>
+
+    <!-- ============ filters, badges, actions ============ -->
+    <string name="filter_all">All</string>
+    <string name="badge_sos">SOS</string>
+    <string name="action_dispatch">Dispatch</string>
+
+    <!-- ============ dashboard ============ -->
+    <string name="dashboard_quick_actions">Quick actions</string>
+    <string name="dashboard_open_incidents">Open incidents</string>
+
+    <!-- ============ map ============ -->
+    <string name="map_active_incidents">Active incidents</string>
+    <string name="map_no_incidents">No open incidents in this area</string>
+    <string name="map_drawer_expand">Show incident list</string>
+    <string name="map_drawer_collapse">Hide incident list</string>
+
+    <!-- ============ walkie-talkie ============ -->
+    <string name="walkie_expand">Expand radio panel</string>
+    <string name="walkie_collapse">Collapse radio panel</string>
+    <string name="walkie_show">Show radio</string>
+    <string name="walkie_hide">Hide radio</string>
+    <string name="walkie_speaking">%1$s speaking</string>
+    <string name="walkie_on_air">On air</string>
+    <string name="walkie_disconnected">Disconnected</string>
+    <string name="walkie_connecting">Connecting…</string>
+    <string name="walkie_no_transport">Demo — no radio transport</string>
+    <string name="walkie_members">%1$d on channel</string>
+    <string name="walkie_busy">Channel busy</string>
+    <string name="walkie_unavailable">Radio unavailable</string>
+    <string name="walkie_hold_to_talk">Hold to talk</string>
+    <string name="cd_walkie_active">Voice activity</string>
+    <string name="cd_walkie_idle">Channel idle</string>
+
 </resources>

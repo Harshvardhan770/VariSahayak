@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.varisahayak.core.common.AppError
 import com.varisahayak.core.common.Outcome
 import com.varisahayak.core.common.UiState
+import com.varisahayak.data.sync.SyncScheduler
 import com.varisahayak.domain.repository.AuthRepository
 import com.varisahayak.domain.repository.ProfileRepository
 import com.varisahayak.core.common.onFailure
@@ -28,6 +29,7 @@ data class SignInUiState(
 class SignInViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val profileRepository: ProfileRepository,
+    private val syncScheduler: SyncScheduler,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SignInUiState())
@@ -60,6 +62,9 @@ class SignInViewModel @Inject constructor(
                     authRepository.currentUserId()?.let { userId ->
                         profileRepository.refresh(userId)
                     }
+                    // Fill the local store before the first dashboard frame, so a
+                    // responder signing in sees the open queue rather than an empty one.
+                    syncScheduler.requestSync()
                     _uiState.update { it.copy(isLoading = false) }
                 }
                 .onFailure { error ->

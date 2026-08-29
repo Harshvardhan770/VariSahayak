@@ -44,15 +44,20 @@ interface AuthRepository {
     /**
      * Creates an account.
      *
-     * [role] is what the sign-up form offered, but it is NOT sent to the server. The
-     * database trigger always assigns VOLUNTEER — a client-supplied role would be a
-     * privilege-escalation hole. Elevated roles come from the administrator flow.
+     * [role] is a *request*, not an instruction. It is sent to the server, and the
+     * `handle_new_user` trigger grants it only if `roles.self_assignable` is true for
+     * that role, falling back to VOLUNTEER otherwise. The client can therefore never
+     * grant itself a role the database has not opened up.
+     *
+     * [organisationName] is required when [role] is a responder role and ignored
+     * otherwise — a responder with no organisation cannot be routed to.
      */
     suspend fun signUp(
         email: String,
         password: String,
         displayName: String,
         role: com.varisahayak.domain.model.UserRole,
+        organisationName: String? = null,
     ): Outcome<SignUpResult>
 
     suspend fun signOut(): Outcome<Unit>
