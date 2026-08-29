@@ -64,6 +64,12 @@ class IncidentRepositoryImpl @Inject constructor(
 
     override fun observeUnsyncedCount(): Flow<Int> = incidentDao.observeUnsyncedCount()
 
+    override fun observeReportedCount(userId: String): Flow<Int> =
+        incidentDao.observeReportedCount(userId)
+
+    override fun observeResolvedCount(userId: String): Flow<Int> =
+        incidentDao.observeResolvedCount(userId)
+
     /**
      * Creates an incident locally and returns immediately.
      *

@@ -47,6 +47,12 @@ interface IncidentDao {
     @Query("SELECT * FROM incidents WHERE clientId = :clientId")
     fun observeByClientId(clientId: String): Flow<IncidentEntity?>
 
+    @Query("SELECT COUNT(*) FROM incidents WHERE reporterId = :userId")
+    fun observeReportedCount(userId: String): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM incidents WHERE assigneeId = :userId AND status = 'RESOLVED'")
+    fun observeResolvedCount(userId: String): Flow<Int>
+
     @Query("SELECT * FROM incidents WHERE clientId = :clientId")
     suspend fun getByClientId(clientId: String): IncidentEntity?
 

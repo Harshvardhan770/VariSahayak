@@ -240,6 +240,14 @@
     <string name="profile_organisation">Organisation</string>
     <string name="profile_area">Assigned area</string>
     <string name="profile_language">Language</string>
+    <string name="profile_impact">Your Impact</string>
+    <string name="profile_reported">Incidents Reported</string>
+    <string name="profile_resolved">Incidents Resolved</string>
+    <string name="profile_app_info">App Information</string>
+    <string name="profile_version">Version</string>
+    <string name="profile_environment">Environment</string>
+    <string name="profile_not_assigned">Not Assigned</string>
+    <string name="profile_all_route">All Route</string>
 
     <!-- Accessibility content descriptions -->
     <string name="cd_priority_badge">Priority: %1$s</string>

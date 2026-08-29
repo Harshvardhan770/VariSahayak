@@ -58,6 +58,13 @@ class SignInViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             
+            // Clear the local profile before attempting a new sign-in.
+            // If the call succeeds, authState becomes SignedIn immediately; if the
+            // local store still holds the previous user's profile, the app shell
+            // will eagerly navigate using the old role before resolveProfile() 
+            // has a chance to refresh it.
+            profileRepository.clearCache()
+            
             authRepository.signIn(email, password)
                 .onSuccess {
                     // Auth success triggers AuthState.SignedIn, handled by VariSahayakApp

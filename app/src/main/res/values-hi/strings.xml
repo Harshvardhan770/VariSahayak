@@ -197,6 +197,14 @@
     <string name="profile_organisation">संगठन</string>
     <string name="profile_area">निर्धारित क्षेत्र</string>
     <string name="profile_language">भाषा</string>
+    <string name="profile_impact">आपका प्रभाव</string>
+    <string name="profile_reported">रिपोर्ट की गई घटनाएं</string>
+    <string name="profile_resolved">हल की गई घटनाएं</string>
+    <string name="profile_app_info">ऐप की जानकारी</string>
+    <string name="profile_version">संस्करण</string>
+    <string name="profile_environment">वातावरण</string>
+    <string name="profile_not_assigned">असाइन नहीं किया गया</string>
+    <string name="profile_all_route">पूरा मार्ग</string>
 
     <string name="cd_priority_badge">प्राथमिकता: %1$s</string>
     <string name="cd_sync_badge">सिंक स्थिति: %1$s</string>

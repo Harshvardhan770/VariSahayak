@@ -100,6 +100,10 @@ interface IncidentRepository {
 
     fun observeUnsyncedCount(): Flow<Int>
 
+    fun observeReportedCount(userId: String): Flow<Int>
+
+    fun observeResolvedCount(userId: String): Flow<Int>
+
     /**
      * Creates an incident locally and returns immediately.
      *

@@ -141,15 +141,23 @@ fun VariSahayakApp(
 
     // Auth navigation state machine
     LaunchedEffect(authState, profile) {
-        when (authState) {
+        val state = authState
+        when (state) {
             is AuthState.SignedIn -> {
                 profile?.let { p ->
-                    val home = TopLevelDestination.homeRoute(p.role)
-                    // Only navigate to home if currently on splash or auth screens
-                    if (currentRoute == null || currentRoute.contains("Splash") || currentRoute.contains("SignIn") || currentRoute.contains("SignUp")) {
-                        navController.navigate(home) {
-                            popUpTo(Destination.Splash) { inclusive = true }
-                            launchSingleTop = true
+                    // The profile in the store has to belong to the authenticated user.
+                    // On a new sign-in the authState updates instantly, but the profile
+                    // Flow might still emit the cached row from a previous session for
+                    // one frame — navigating on it would drop an Admin into the 
+                    // Volunteer dashboard of the person who used the device last.
+                    if (p.userId == state.userId) {
+                        val home = TopLevelDestination.homeRoute(p.role)
+                        // Only navigate to home if currently on splash or auth screens
+                        if (currentRoute == null || currentRoute.contains("Splash") || currentRoute.contains("SignIn") || currentRoute.contains("SignUp")) {
+                            navController.navigate(home) {
+                                popUpTo(Destination.Splash) { inclusive = true }
+                                launchSingleTop = true
+                            }
                         }
                     }
                 }

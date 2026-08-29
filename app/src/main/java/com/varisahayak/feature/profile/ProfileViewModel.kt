@@ -6,14 +6,20 @@ import com.varisahayak.core.common.AppError
 import com.varisahayak.core.common.Outcome
 import com.varisahayak.domain.model.Profile
 import com.varisahayak.domain.repository.AuthRepository
+import com.varisahayak.domain.repository.AuthState
 import com.varisahayak.domain.repository.DeviceTokenRepository
 import com.varisahayak.domain.repository.IncidentRepository
 import com.varisahayak.domain.repository.ProfileRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -21,6 +27,8 @@ import javax.inject.Inject
 data class ProfileUiState(
     val profile: Profile? = null,
     val unsyncedCount: Int = 0,
+    val reportedCount: Int = 0,
+    val resolvedCount: Int = 0,
     val isLoading: Boolean = false,
     val error: AppError? = null,
 )
@@ -36,15 +44,32 @@ class ProfileViewModel @Inject constructor(
     private val _isLoading = MutableStateFlow(false)
     private val _error = MutableStateFlow<AppError?>(null)
 
+    private val userId = authRepository.authState
+        .map { (it as? AuthState.SignedIn)?.userId }
+        .distinctUntilChanged()
+
+    @OptIn(ExperimentalCoroutinesApi::class)
     val uiState: StateFlow<ProfileUiState> = combine(
         profileRepository.observeCurrentProfile(),
         incidentRepository.observeUnsyncedCount(),
         _isLoading,
         _error,
-    ) { profile, unsynced, isLoading, error ->
+        userId.flatMapLatest { id ->
+            if (id != null) {
+                combine(
+                    incidentRepository.observeReportedCount(id),
+                    incidentRepository.observeResolvedCount(id),
+                ) { reported, resolved -> reported to resolved }
+            } else {
+                flowOf(0 to 0)
+            }
+        },
+    ) { profile, unsynced, isLoading, error, stats ->
         ProfileUiState(
             profile = profile,
             unsyncedCount = unsynced,
+            reportedCount = stats.first,
+            resolvedCount = stats.second,
             isLoading = isLoading,
             error = error,
         )
