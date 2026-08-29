@@ -106,6 +106,10 @@ androidx-camera-lifecycle = { module = "androidx.camera:camera-lifecycle", versi
 androidx-camera-view = { module = "androidx.camera:camera-view", version.ref = "camerax" }
 androidx-camera-compose = { module = "androidx.camera:camera-compose", version.ref = "camerax" }
 
+# Photographs from a phone camera carry their rotation in EXIF rather than in the pixels.
+# Without reading it, a portrait shot reaches face detection lying on its side.
+androidx-exifinterface = { module = "androidx.exifinterface:exifinterface", version = "1.4.1" }
+
 # --- ml kit (bundled: works with no Play Services and no first-use download) ---
 mlkit-barcode-scanning = { module = "com.google.mlkit:barcode-scanning", version.ref = "mlkitBarcode" }
 

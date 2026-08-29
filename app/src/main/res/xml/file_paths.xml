@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Exactly one shared path, and it is internal storage.
+
+    Lost & Found photographs are pictures of missing children. They stay inside the app's
+    private files directory, where no other app and no backup agent can read them; the
+    FileProvider grant exists only so the camera app can write a single capture, and it is
+    revoked as soon as the capture returns.
+-->
+<paths>
+    <files-path
+        name="lostfound_photos"
+        path="lostfound/" />
+</paths>

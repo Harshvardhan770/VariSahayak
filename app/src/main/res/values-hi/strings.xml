@@ -387,4 +387,48 @@
     <string name="not_connected_chart">रुझान बनाने के लिए अभी पर्याप्त डेटा नहीं है।</string>
     <string name="not_connected_breakdown">अभी विभाजित करने के लिए कोई घटना नहीं है।</string>
 
+
+    <!-- Lost &amp; Found report form: tap-first vocabularies and photo capture. -->
+    <string name="lostfound_photo_label">फोटो</string>
+    <string name="lostfound_photo_take">फोटो लें</string>
+    <string name="lostfound_photo_retake">फिर से फोटो लें</string>
+    <string name="lostfound_photo_choose">फोटो चुनें</string>
+    <string name="lostfound_photo_remove">फोटो हटाएं</string>
+    <string name="lostfound_photo_processing">रिपोर्ट सहेजी गई। चेहरा मिलान के लिए फोटो जाँची जा रही है…</string>
+    <string name="lostfound_more_details">और जानकारी</string>
+    <string name="lostfound_fewer_details">कम जानकारी</string>
+    <string name="lostfound_field_age_exact">सही उम्र, यदि पता हो</string>
+    <string name="lostfound_field_clothing_detail">कपड़ों का अन्य विवरण</string>
+    <string name="lostfound_gender_male">पुरुष</string>
+    <string name="lostfound_gender_female">महिला</string>
+    <string name="lostfound_gender_other">अन्य</string>
+    <string name="lostfound_age_infant">शिशु</string>
+    <string name="lostfound_age_young_child">छोटा बच्चा</string>
+    <string name="lostfound_age_child">बच्चा</string>
+    <string name="lostfound_age_teen">किशोर</string>
+    <string name="lostfound_age_adult">वयस्क</string>
+    <string name="lostfound_age_elderly">बुज़ुर्ग</string>
+    <string name="lostfound_language_marathi">मराठी</string>
+    <string name="lostfound_language_hindi">हिंदी</string>
+    <string name="lostfound_language_kannada">कन्नड़</string>
+    <string name="lostfound_language_telugu">तेलुगू</string>
+    <string name="lostfound_language_gujarati">गुजराती</string>
+    <string name="lostfound_language_english">अंग्रेज़ी</string>
+    <string name="lostfound_language_not_speaking">बोल नहीं रहे</string>
+    <string name="lostfound_language_unknown">पता नहीं</string>
+    <string name="lostfound_condition_needs_medical">चिकित्सा सहायता चाहिए</string>
+    <string name="lostfound_condition_distressed">परेशान</string>
+    <string name="lostfound_condition_tired">थका या भूखा</string>
+    <string name="lostfound_condition_safe">सुरक्षित और ठीक</string>
+    <string name="colour_red">लाल</string>
+    <string name="colour_orange">नारंगी</string>
+    <string name="colour_yellow">पीला</string>
+    <string name="colour_green">हरा</string>
+    <string name="colour_blue">नीला</string>
+    <string name="colour_purple">बैंगनी</string>
+    <string name="colour_pink">गुलाबी</string>
+    <string name="colour_white">सफेद</string>
+    <string name="colour_black">काला</string>
+    <string name="colour_brown">भूरा</string>
+    <string name="colour_grey">सलेटी</string>
 </resources>

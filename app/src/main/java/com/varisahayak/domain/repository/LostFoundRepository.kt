@@ -2,6 +2,7 @@ package com.varisahayak.domain.repository
 
 import com.varisahayak.core.common.Outcome
 import com.varisahayak.domain.model.CustodyRecord
+import com.varisahayak.domain.model.FaceMatchStatus
 import com.varisahayak.domain.model.GeoPoint
 import com.varisahayak.domain.model.LostFoundKind
 import com.varisahayak.domain.model.LostFoundMatch
@@ -47,6 +48,18 @@ interface LostFoundRepository {
      * incident so it reaches the normal priority, matching and notification pipeline.
      */
     suspend fun report(details: ReportDetails): Outcome<LostFoundReport>
+
+    /**
+     * Sends a report's photograph for face processing and records the verdict.
+     *
+     * Separate from [report] because a report is saved locally and instantly while this
+     * needs the network — binding the two would mean a volunteer in a dead spot could not
+     * file at all. A report with a photo is stored PENDING and this moves it on when it can.
+     *
+     * Never fails a report. Every outcome is a [FaceMatchStatus] the caller can show or
+     * ignore; SERVICE_UNAVAILABLE leaves the report PENDING so a later attempt can retry.
+     */
+    suspend fun submitPhotoForMatching(clientId: String): Outcome<FaceMatchStatus>
 
     /** Corrects details on an existing report — including replacing the photo. */
     suspend fun update(

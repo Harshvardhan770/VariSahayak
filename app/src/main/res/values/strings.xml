@@ -434,4 +434,48 @@
     <string name="not_connected_chart">Not enough data yet to draw a trend.</string>
     <string name="not_connected_breakdown">No incidents to break down yet.</string>
 
+
+    <!-- Lost &amp; Found report form: tap-first vocabularies and photo capture. -->
+    <string name="lostfound_photo_label">Photo</string>
+    <string name="lostfound_photo_take">Take photo</string>
+    <string name="lostfound_photo_retake">Retake photo</string>
+    <string name="lostfound_photo_choose">Choose photo</string>
+    <string name="lostfound_photo_remove">Remove photo</string>
+    <string name="lostfound_photo_processing">Report saved. Checking the photo for a face match…</string>
+    <string name="lostfound_more_details">More details</string>
+    <string name="lostfound_fewer_details">Fewer details</string>
+    <string name="lostfound_field_age_exact">Exact age, if known</string>
+    <string name="lostfound_field_clothing_detail">Other clothing detail</string>
+    <string name="lostfound_gender_male">Male</string>
+    <string name="lostfound_gender_female">Female</string>
+    <string name="lostfound_gender_other">Other</string>
+    <string name="lostfound_age_infant">Baby</string>
+    <string name="lostfound_age_young_child">Young child</string>
+    <string name="lostfound_age_child">Child</string>
+    <string name="lostfound_age_teen">Teenager</string>
+    <string name="lostfound_age_adult">Adult</string>
+    <string name="lostfound_age_elderly">Elderly</string>
+    <string name="lostfound_language_marathi">Marathi</string>
+    <string name="lostfound_language_hindi">Hindi</string>
+    <string name="lostfound_language_kannada">Kannada</string>
+    <string name="lostfound_language_telugu">Telugu</string>
+    <string name="lostfound_language_gujarati">Gujarati</string>
+    <string name="lostfound_language_english">English</string>
+    <string name="lostfound_language_not_speaking">Not speaking</string>
+    <string name="lostfound_language_unknown">Not known</string>
+    <string name="lostfound_condition_needs_medical">Needs medical help</string>
+    <string name="lostfound_condition_distressed">Distressed</string>
+    <string name="lostfound_condition_tired">Tired or hungry</string>
+    <string name="lostfound_condition_safe">Safe and well</string>
+    <string name="colour_red">Red</string>
+    <string name="colour_orange">Orange</string>
+    <string name="colour_yellow">Yellow</string>
+    <string name="colour_green">Green</string>
+    <string name="colour_blue">Blue</string>
+    <string name="colour_purple">Purple</string>
+    <string name="colour_pink">Pink</string>
+    <string name="colour_white">White</string>
+    <string name="colour_black">Black</string>
+    <string name="colour_brown">Brown</string>
+    <string name="colour_grey">Grey</string>
 </resources>

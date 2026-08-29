@@ -4,7 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.varisahayak.core.common.AppError
 import com.varisahayak.core.common.Outcome
+import com.varisahayak.core.common.getOrNull
 import com.varisahayak.core.location.LocationProvider
+import com.varisahayak.core.media.PhotoCapture
 import com.varisahayak.domain.model.FaceMatchStatus
 import com.varisahayak.domain.model.LostFoundKind
 import com.varisahayak.domain.model.LostFoundReport
@@ -35,29 +37,69 @@ enum class BoardFilter { ALL, LOST, FOUND }
 /**
  * The report form.
  *
- * Every field but [title] is optional, and that is a product decision rather than an
- * oversight: a parent who reaches a volunteer at dusk with no photograph and half a
- * description must still be able to file something the matching engine can work with.
+ * Nothing here is mandatory, which is a product decision rather than an oversight: a parent
+ * who reaches a volunteer at dusk with no photograph and half a description must still be
+ * able to file something the matching engine can work with.
+ *
+ * Most of it is tapped rather than typed. The structured fields are not a cosmetic change —
+ * `LostFoundMatchingEngine` compares gender and language by exact string equality, so while
+ * they were free text "M", "male" and "boy" were three different genders and the signal
+ * almost never fired. See [ReportOption].
  */
 data class ReportFormState(
     val kind: LostFoundKind = LostFoundKind.LOST,
     val subjectType: LostFoundSubjectType = LostFoundSubjectType.PERSON,
-    val title: String = "",
-    val description: String = "",
+
+    // --- the fast path: one photo and four taps ---
+    val photoLocalPath: String? = null,
     val personName: String = "",
     val approximateAge: String = "",
-    val gender: String = "",
-    val clothingDescription: String = "",
-    val physicalDescription: String = "",
-    val language: String = "",
-    val condition: String = "",
-    val additionalNotes: String = "",
-    val guardianName: String = "",
+    val gender: GenderOption? = null,
+    val clothingColours: Set<ClothingColour> = emptySet(),
+    val clothingDetail: String = "",
+    val language: LanguageOption? = null,
+
+    // Found side only: triage for whoever comes to help.
+    val condition: ConditionOption? = null,
+
+    // Lost side only: who to call. The single most valuable field for actually reuniting.
     val guardianPhone: String = "",
-    val photoLocalPath: String? = null,
+
+    // --- behind "more details", for when there is time ---
+    val guardianName: String = "",
+    val physicalDescription: String = "",
+    val additionalNotes: String = "",
+    val isExpanded: Boolean = false,
 ) {
-    /** The only hard requirement. Everything else can be filled in later. */
-    val canSubmit: Boolean get() = title.isNotBlank()
+    /** Age as the engine wants it: a number, or nothing. */
+    val ageOrNull: Int? get() = approximateAge.toIntOrNull()
+
+    /**
+     * Clothing as one string, colours first.
+     *
+     * The engine compares clothing as a bag of words with Jaccard overlap, so the tapped
+     * colours are what actually produce a match between two hurried descriptions. The free
+     * text is what distinguishes one child in a yellow shirt from another.
+     */
+    fun clothingDescription(colourWords: List<String>): String =
+        (colourWords + clothingDetail.trim()).filter { it.isNotBlank() }.joinToString(" ")
+
+    /**
+     * True once the report says *anything* identifying.
+     *
+     * Not a validation rule so much as a guard against an empty submission: a report with no
+     * photo, no name, no age, no clothing and no description cannot be matched against
+     * anything and would only add noise to the board.
+     */
+    val canSubmit: Boolean
+        get() = photoLocalPath != null ||
+            personName.isNotBlank() ||
+            approximateAge.isNotBlank() ||
+            gender != null ||
+            clothingColours.isNotEmpty() ||
+            clothingDetail.isNotBlank() ||
+            physicalDescription.isNotBlank() ||
+            additionalNotes.isNotBlank()
 }
 
 data class LostFoundUiState(
@@ -75,6 +117,8 @@ data class LostFoundUiState(
     val unsyncedCount: Int = 0,
     /** Shown after submit when the photo could not be used for face matching. */
     val photoNotice: String? = null,
+    /** True while the photograph is being sent for face processing. */
+    val isProcessingPhoto: Boolean = false,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
@@ -154,11 +198,18 @@ class LostFoundViewModel @Inject constructor(
                 error = null,
                 justReportedClientId = null,
                 photoNotice = null,
+                isProcessingPhoto = false,
             )
         }
     }
 
-    fun closeReport() = _uiState.update { it.copy(isReportOpen = false, error = null) }
+    /** Cancelling discards the photograph too; nothing else will ever reference the file. */
+    fun closeReport() {
+        PhotoCapture.discard(_uiState.value.form.photoLocalPath)
+        _uiState.update {
+            it.copy(isReportOpen = false, error = null, form = it.form.copy(photoLocalPath = null))
+        }
+    }
 
     fun updateForm(mutate: (ReportFormState) -> ReportFormState) =
         _uiState.update { it.copy(form = mutate(it.form), error = null) }
@@ -209,8 +260,8 @@ class LostFoundViewModel @Inject constructor(
             _uiState.update {
                 it.copy(
                     error = AppError.Validation(
-                        field = "title",
-                        message = "Add a short description of who or what is missing.",
+                        field = "form",
+                        message = "Add a photo, or at least one detail about the person.",
                     ),
                 )
             }
@@ -227,15 +278,19 @@ class LostFoundViewModel @Inject constructor(
             val details = ReportDetails(
                 kind = form.kind,
                 subjectType = form.subjectType,
-                title = form.title,
-                description = form.description,
+                // Derived, not asked for. A title was the one mandatory field on this form,
+                // and it was pure friction: everything a useful title contains is already
+                // in the structured fields, so composing it here removes a typing step from
+                // the critical path without losing anything from the board.
+                title = deriveTitle(form),
+                description = "",
                 personName = form.personName,
-                approximateAge = form.approximateAge.toIntOrNull(),
-                gender = form.gender,
-                clothingDescription = form.clothingDescription,
+                approximateAge = form.ageOrNull,
+                gender = form.gender?.wireValue,
+                clothingDescription = form.clothingDescription(colourWords(form)),
                 physicalDescription = form.physicalDescription,
-                language = form.language,
-                condition = form.condition,
+                language = form.language?.wireValue,
+                condition = form.condition?.wireValue,
                 additionalNotes = form.additionalNotes,
                 guardianName = form.guardianName,
                 guardianPhone = form.guardianPhone,
@@ -249,22 +304,115 @@ class LostFoundViewModel @Inject constructor(
             )
 
             when (val result = lostFoundRepository.report(details)) {
-                is Outcome.Success -> _uiState.update {
-                    it.copy(
-                        isSubmitting = false,
-                        isReportOpen = false,
-                        form = ReportFormState(),
-                        scannedLocation = null,
-                        unresolvedToken = null,
-                        justReportedClientId = result.data.clientId,
-                        photoNotice = photoNoticeFor(result.data.faceMatchStatus),
-                    )
+                is Outcome.Success -> {
+                    _uiState.update {
+                        it.copy(
+                            isSubmitting = false,
+                            isReportOpen = false,
+                            form = ReportFormState(),
+                            scannedLocation = null,
+                            unresolvedToken = null,
+                            justReportedClientId = result.data.clientId,
+                            // Null while a photo is still being processed; the confirmation
+                            // shows the generic "saved" line until a verdict arrives.
+                            photoNotice = photoNoticeFor(result.data.faceMatchStatus),
+                            isProcessingPhoto = result.data.photoLocalPath != null,
+                        )
+                    }
+
+                    // After the report is saved and the dialog is closed, never before. The
+                    // report is already safe on disk, so this can take as long as it takes
+                    // and fail as badly as it likes without costing the volunteer anything.
+                    if (result.data.photoLocalPath != null) {
+                        processPhoto(result.data.clientId)
+                    }
                 }
 
                 is Outcome.Failure -> _uiState.update {
                     it.copy(isSubmitting = false, error = result.error)
                 }
             }
+        }
+    }
+
+    // --- photograph -----------------------------------------------------------------------
+
+    /**
+     * Attaches a captured or imported photograph.
+     *
+     * A replacement deletes the file it replaces. Without that, every retaken shot would
+     * leave an orphan in private storage that nothing ever cleans up.
+     */
+    fun onPhotoCaptured(path: String) {
+        val previous = _uiState.value.form.photoLocalPath
+        if (previous != null && previous != path) PhotoCapture.discard(previous)
+        updateForm { it.copy(photoLocalPath = path) }
+    }
+
+    /** Removes the photo and the file behind it. */
+    fun clearPhoto() {
+        PhotoCapture.discard(_uiState.value.form.photoLocalPath)
+        updateForm { it.copy(photoLocalPath = null) }
+    }
+
+    /**
+     * Sends the photograph for face processing and reports the verdict.
+     *
+     * Runs after the report is saved, never as part of saving it. A failure here changes a
+     * status field and a line of wording; it can never cost a volunteer their report.
+     */
+    private fun processPhoto(clientId: String) {
+        viewModelScope.launch {
+            val status = lostFoundRepository.submitPhotoForMatching(clientId)
+                .getOrNull() ?: FaceMatchStatus.SERVICE_UNAVAILABLE
+
+            _uiState.update {
+                // Only if the volunteer is still looking at the confirmation this belongs
+                // to. They may already have moved on, and a notice about a report they have
+                // stopped thinking about would be confusing rather than helpful.
+                if (it.justReportedClientId != clientId) {
+                    it.copy(isProcessingPhoto = false)
+                } else {
+                    it.copy(isProcessingPhoto = false, photoNotice = photoNoticeFor(status))
+                }
+            }
+        }
+    }
+
+    // --- derived values -------------------------------------------------------------------
+
+    /** Clothing colours as the words the matching engine tokenises. */
+    private fun colourWords(form: ReportFormState): List<String> =
+        ClothingColour.entries
+            .filter { it in form.clothingColours }
+            .map { it.wireValue }
+
+    /**
+     * Builds the board's headline for a report from what was actually filled in.
+     *
+     * Falls through progressively: a name if there is one, otherwise an age-and-gender
+     * description, otherwise the clothing, otherwise a bare label. Every branch produces
+     * something a volunteer scanning the list can tell apart from its neighbours, which is
+     * all a title was ever for.
+     */
+    private fun deriveTitle(form: ReportFormState): String {
+        form.personName.trim().takeIf { it.isNotBlank() }?.let { return it }
+
+        val descriptor = listOfNotNull(
+            form.ageOrNull?.let { "about $it" },
+            form.gender?.wireValue,
+        ).joinToString(" ")
+
+        if (descriptor.isNotBlank()) {
+            return descriptor.replaceFirstChar(Char::uppercase)
+        }
+
+        val clothing = form.clothingDescription(colourWords(form))
+        if (clothing.isNotBlank()) return "Wearing $clothing"
+
+        return when (form.kind) {
+            LostFoundKind.LOST -> "Missing person"
+            LostFoundKind.FOUND -> "Found person"
         }
     }
 
@@ -294,7 +442,9 @@ class LostFoundViewModel @Inject constructor(
     }
 
     fun dismissConfirmation() =
-        _uiState.update { it.copy(justReportedClientId = null, photoNotice = null) }
+        _uiState.update {
+            it.copy(justReportedClientId = null, photoNotice = null, isProcessingPhoto = false)
+        }
 
     fun dismissError() = _uiState.update { it.copy(error = null) }
 

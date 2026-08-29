@@ -5,11 +5,13 @@ import com.varisahayak.core.common.AppError
 import com.varisahayak.core.common.Clock
 import com.varisahayak.core.common.DispatcherProvider
 import com.varisahayak.core.common.Outcome
+import com.varisahayak.core.media.PhotoCapture
 import com.varisahayak.data.local.dao.CustodyDao
 import com.varisahayak.data.local.dao.LostFoundDao
 import com.varisahayak.data.local.dao.LostFoundMatchDao
 import com.varisahayak.data.local.entity.CustodyEntity
 import com.varisahayak.data.local.entity.LostFoundMatchEntity
+import com.varisahayak.data.remote.dto.FaceProcessingDto
 import com.varisahayak.data.remote.dto.LostFoundMatchDto
 import com.varisahayak.data.remote.dto.LostFoundReportDto
 import com.varisahayak.data.sync.SyncScheduler
@@ -31,11 +33,16 @@ import com.varisahayak.domain.repository.ReportDetails
 import com.varisahayak.domain.usecase.LostFoundMatchingEngine
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.functions.functions
 import io.github.jan.supabase.postgrest.from
+import io.ktor.client.call.body
+import io.ktor.client.request.setBody
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
+import android.util.Base64
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -201,6 +208,76 @@ class LostFoundRepositoryImpl @Inject constructor(
             syncScheduler.requestSync()
             Outcome.Success(report)
         }
+
+    /**
+     * Uploads a report's photograph for face processing and records the verdict.
+     *
+     * Goes through the `process-face` Edge Function rather than calling the Python service
+     * directly. That indirection is the security design: the function authorises the caller
+     * under RLS before doing anything, and the face service's shared secret stays on the
+     * server instead of being shipped inside an APK where anyone can extract it.
+     *
+     * Every failure is swallowed into a status. Nothing here can fail a report — the report
+     * was saved before this ran and stays matchable on its other attributes either way.
+     */
+    override suspend fun submitPhotoForMatching(
+        clientId: String,
+    ): Outcome<FaceMatchStatus> = withContext(dispatchers.io) {
+        val report = lostFoundDao.getByClientId(clientId)?.toDomain()
+            ?: return@withContext Outcome.Failure(AppError.NotFound())
+
+        val path = report.photoLocalPath
+            ?: return@withContext Outcome.Success(FaceMatchStatus.NOT_APPLICABLE)
+
+        val bytes = PhotoCapture.readBytes(path)
+        if (bytes == null || bytes.isEmpty()) {
+            // The file went missing between filing and uploading. Recorded rather than
+            // retried forever, so the report stops claiming a photo it no longer has.
+            recordFaceStatus(clientId, FaceMatchStatus.INVALID_IMAGE)
+            return@withContext Outcome.Success(FaceMatchStatus.INVALID_IMAGE)
+        }
+
+        val status = try {
+            // NO_WRAP: a base64 body with embedded newlines is not valid JSON string content
+            // and the function would reject the whole request.
+            val encoded = Base64.encodeToString(bytes, Base64.NO_WRAP)
+
+            val response = supabase.functions.invoke("process-face") {
+                setBody(
+                    FaceEnrolRequest(report_client_id = clientId, image = encoded),
+                )
+            }
+
+            FaceMatchStatus.fromWire(response.body<FaceProcessingDto>().status)
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (error: Exception) {
+            // Offline, timed out, function not deployed. All the same to a volunteer, and
+            // all retryable: the report stays PENDING rather than being marked bad.
+            Log.d(TAG, "Face processing unavailable: ${error.message}")
+            FaceMatchStatus.SERVICE_UNAVAILABLE
+        }
+
+        // SERVICE_UNAVAILABLE is deliberately not written. It is transient, and persisting it
+        // would be indistinguishable from a genuinely unusable photograph on the next pass.
+        if (status != FaceMatchStatus.SERVICE_UNAVAILABLE) {
+            recordFaceStatus(clientId, status)
+        }
+
+        Outcome.Success(status)
+    }
+
+    /**
+     * Writes a face verdict locally without touching sync state.
+     *
+     * The server owns this column — it is set by the Edge Function on the row the sync
+     * worker already pushed — so marking the row PENDING here would send the client's copy
+     * back up and overwrite the authoritative value with itself.
+     */
+    private suspend fun recordFaceStatus(clientId: String, status: FaceMatchStatus) {
+        val current = lostFoundDao.getByClientId(clientId)?.toDomain() ?: return
+        lostFoundDao.upsert(current.copy(faceMatchStatus = status).toEntity())
+    }
 
     override suspend fun update(
         clientId: String,
@@ -597,3 +674,16 @@ private fun LostFoundReport.matches(criteria: AttributeSearch): Boolean {
 
     return true
 }
+
+/**
+ * The `process-face` request body.
+ *
+ * A photograph, never an embedding. A client-supplied vector would be trivially forged into
+ * a match, so the client's only input to face matching is the image itself.
+ */
+@Serializable
+private data class FaceEnrolRequest(
+    val report_client_id: String,
+    val image: String,
+    val action: String = "enrol",
+)
