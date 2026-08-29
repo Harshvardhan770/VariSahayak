@@ -1,0 +1,135 @@
+package com.varisahayak.app.navigation
+
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import com.varisahayak.R
+import com.varisahayak.app.MainViewModel
+import com.varisahayak.domain.repository.AuthState
+import com.varisahayak.feature.auth.SignInScreen
+import com.varisahayak.feature.auth.SignInViewModel
+
+/**
+ * Main application entry point for Compose.
+ *
+ * This hosts the NavHost and manages the top-level navigation state.
+ */
+@Composable
+fun VariSahayakApp(
+    viewModel: MainViewModel = hiltViewModel(),
+) {
+    val navController = rememberNavController()
+    val authState by viewModel.authState.collectAsState(initial = AuthState.Unknown)
+    val profile by viewModel.profile.collectAsState(initial = null)
+
+    LaunchedEffect(authState, profile) {
+        when (val state = authState) {
+            is AuthState.SignedIn -> {
+                profile?.let { p ->
+                    val home = TopLevelDestination.homeRoute(p.role)
+                    navController.navigate(home) {
+                        popUpTo(Destination.Splash) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                }
+            }
+            is AuthState.SignedOut -> {
+                navController.navigate(Destination.SignIn) {
+                    popUpTo(0) { inclusive = true }
+                    launchSingleTop = true
+                }
+            }
+            is AuthState.SessionExpired -> {
+                navController.navigate(Destination.SignIn) {
+                    popUpTo(0) { inclusive = true }
+                    launchSingleTop = true
+                }
+            }
+            AuthState.Unknown -> {
+                // Stay on current (likely Splash)
+            }
+        }
+    }
+
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+    ) { innerPadding ->
+        NavHost(
+            navController = navController,
+            startDestination = Destination.Splash,
+            modifier = Modifier.padding(innerPadding)
+        ) {
+            composable<Destination.Splash> {
+                SplashScreen()
+            }
+            composable<Destination.SignIn> {
+                val signInViewModel: SignInViewModel = hiltViewModel()
+                SignInScreen(viewModel = signInViewModel)
+            }
+            composable<Destination.VolunteerDashboard> {
+                PlaceholderScreen(title = stringResource(R.string.nav_dashboard) + " (Volunteer)")
+            }
+            composable<Destination.ResponderDashboard> {
+                PlaceholderScreen(title = stringResource(R.string.nav_dashboard) + " (Responder)")
+            }
+            composable<Destination.CommandDashboard> {
+                PlaceholderScreen(title = stringResource(R.string.command_title))
+            }
+            composable<Destination.AdminDashboard> {
+                PlaceholderScreen(title = stringResource(R.string.role_admin))
+            }
+            composable<Destination.IncidentList> {
+                PlaceholderScreen(title = stringResource(R.string.nav_incidents))
+            }
+            composable<Destination.IncidentMap> {
+                PlaceholderScreen(title = stringResource(R.string.nav_map))
+            }
+            composable<Destination.QrScanner> {
+                PlaceholderScreen(title = stringResource(R.string.nav_scan))
+            }
+            composable<Destination.Profile> {
+                PlaceholderScreen(title = stringResource(R.string.nav_profile))
+            }
+        }
+    }
+}
+
+@Composable
+private fun SplashScreen() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = stringResource(R.string.app_name),
+            style = MaterialTheme.typography.headlineLarge
+        )
+    }
+}
+
+@Composable
+private fun PlaceholderScreen(title: String) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.headlineMedium
+        )
+    }
+}

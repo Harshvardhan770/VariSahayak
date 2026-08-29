@@ -1,0 +1,56 @@
+# --- Gradle & Build ---
+.gradle/
+build/
+**/build/
+.kotlin/
+*.main.kts
+*.log
+*.hprof
+
+# --- Android ---
+captures/
+*.apk
+*.aar
+*.bundle
+*.ap_
+*.dex
+*.class
+bin/
+gen/
+.externalNativeBuild
+.cxx/
+.navigation/
+
+# --- IDEs ---
+.idea/
+*.iml
+.DS_Store
+.vscode/
+Thumbs.db
+desktop.ini
+
+# --- Secrets & Keys ---
+# Written by Android Studio; holds sdk.dir, not secrets.
+local.properties
+
+# Firebase & Keystores — never commit
+google-services.json
+*.jks
+*.keystore
+
+# Environment Variables
+.env
+.env.*
+!.env.example
+
+# --- Supabase ---
+supabase/.env
+supabase/.env.*
+!supabase/.env.example
+supabase/.branches/
+supabase/.temp/
+supabase/storage/
+
+# --- Agent Artifacts ---
+# Transient task plans, logs and walkthroughs
+.artifacts/
