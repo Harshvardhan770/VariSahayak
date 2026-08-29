@@ -8,6 +8,10 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -325,6 +329,30 @@ private fun VariNavHost(
         navController = navController,
         startDestination = Destination.Splash,
         modifier = modifier,
+        enterTransition = {
+            fadeIn(animationSpec = tween(400)) + slideIntoContainer(
+                AnimatedContentTransitionScope.SlideDirection.Start,
+                animationSpec = tween(400)
+            )
+        },
+        exitTransition = {
+            fadeOut(animationSpec = tween(400)) + slideOutOfContainer(
+                AnimatedContentTransitionScope.SlideDirection.Start,
+                animationSpec = tween(400)
+            )
+        },
+        popEnterTransition = {
+            fadeIn(animationSpec = tween(400)) + slideIntoContainer(
+                AnimatedContentTransitionScope.SlideDirection.End,
+                animationSpec = tween(400)
+            )
+        },
+        popExitTransition = {
+            fadeOut(animationSpec = tween(400)) + slideOutOfContainer(
+                AnimatedContentTransitionScope.SlideDirection.End,
+                animationSpec = tween(400)
+            )
+        }
     ) {
         composable<Destination.Splash> {
             SplashScreen()
