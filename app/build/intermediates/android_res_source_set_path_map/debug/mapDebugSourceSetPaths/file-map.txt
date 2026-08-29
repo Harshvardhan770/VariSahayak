@@ -1,0 +1,8 @@
+com.varisahayak.app-pngs-0 C:\Users\victus\Documents\Hackathons\VariSahayak\app\build\generated\res\pngs\debug
+com.varisahayak.app-updated_navigation_xml-1 C:\Users\victus\Documents\Hackathons\VariSahayak\app\build\generated\updated_navigation_xml\debug
+com.varisahayak.app-packageDebugResources-2 C:\Users\victus\Documents\Hackathons\VariSahayak\app\build\intermediates\incremental\debug\packageDebugResources\merged.dir
+com.varisahayak.app-packageDebugResources-3 C:\Users\victus\Documents\Hackathons\VariSahayak\app\build\intermediates\incremental\debug\packageDebugResources\stripped.dir
+com.varisahayak.app-debug-4 C:\Users\victus\Documents\Hackathons\VariSahayak\app\build\intermediates\merged_res\debug\mergeDebugResources
+com.varisahayak.app-debug-5 C:\Users\victus\Documents\Hackathons\VariSahayak\app\src\debug\res
+com.varisahayak.app-main-6 C:\Users\victus\Documents\Hackathons\VariSahayak\app\src\main\res
+gradleHome-0 C:\Users\victus\.gradle

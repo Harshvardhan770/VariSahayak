@@ -20,6 +20,9 @@ interface ProfileDao {
     @Query("SELECT * FROM profiles WHERE userId = :userId")
     fun observe(userId: String): Flow<ProfileEntity?>
 
+    @Query("SELECT * FROM profiles LIMIT 1")
+    fun observeFirst(): Flow<ProfileEntity?>
+
     @Query("SELECT * FROM profiles WHERE userId = :userId")
     suspend fun get(userId: String): ProfileEntity?
 

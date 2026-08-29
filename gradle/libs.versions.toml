@@ -4,7 +4,7 @@
 
 [versions]
 # --- toolchain ---
-agp = "9.3.0"
+agp = "9.3.2"
 kotlin = "2.3.21"          # NOT 2.4.x — KSP 2.3.11 targets Kotlin 2.3 (contract §0.2)
 ksp = "2.3.11"
 compileSdk = "37"

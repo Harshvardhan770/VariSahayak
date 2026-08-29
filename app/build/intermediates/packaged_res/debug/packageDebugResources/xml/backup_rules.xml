@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Backup is disabled in the manifest (android:allowBackup="false"). Incident data can
+     contain personal information about pilgrims and must not leave the device through
+     an automatic cloud backup. This file exists only to satisfy the manifest reference. -->
+<full-backup-content>
+    <exclude domain="database" path="." />
+    <exclude domain="sharedpref" path="." />
+    <exclude domain="file" path="." />
+</full-backup-content>
