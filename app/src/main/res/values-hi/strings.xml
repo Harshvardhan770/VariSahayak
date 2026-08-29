@@ -133,6 +133,19 @@
 
     <string name="permission_notifications_rationale">सूचनाएँ आपको नए कार्य और आपात स्थिति के बारे में बताती हैं। इनके बिना नया कार्य देखने हेतु ऐप खोलना होगा।</string>
 
+    <string name="map_title">घटना मानचित्र</string>
+    <string name="map_offline">मानचित्र के लिए कनेक्शन आवश्यक है</string>
+    <string name="map_offline_detail">आपकी घटनाएँ सूची में उपलब्ध और पूर्णतः उपयोग योग्य हैं।</string>
+    <string name="map_recenter">मुझ पर केंद्रित करें</string>
+    <string name="map_enable_location">स्थान चालू करें</string>
+    <string name="map_grant_location">स्थान की अनुमति दें</string>
+    <string name="map_location_unavailable">अभी आपका स्थान नहीं मिल सका।</string>
+    <string name="map_hotspot_incidents">%1$d घटनाएँ</string>
+    <string name="map_legend">आकार और रंग दोनों प्राथमिकता दर्शाते हैं</string>
+    <string name="cd_map_my_location">आपकी स्थिति</string>
+    <string name="cd_map_recenter">मानचित्र को अपनी स्थिति पर केंद्रित करें</string>
+    <string name="cd_map_hotspot">%1$d घटनाएँ, उच्चतम प्राथमिकता %2$s</string>
+
     <string name="qr_scan_title">QR पहचानकर्ता स्कैन करें</string>
     <string name="qr_scan_hint">कैमरा वारकरी के QR टैग पर रखें</string>
     <string name="qr_torch">टॉर्च</string>
@@ -186,4 +199,9 @@
     <string name="cd_add_photo">फ़ोटो जोड़ें</string>
     <string name="cd_torch_on">टॉर्च चालू करें</string>
     <string name="cd_torch_off">टॉर्च बंद करें</string>
+    <string name="qr_contains_personal_data">इस टैग में निजी जानकारी है, इसका उपयोग नहीं किया जा सकता। आयोजक को सूचित करें।</string>
+    <string name="sos_bridge_creating">सहायता अनुरोध बनाया जा रहा है…</string>
+    <string name="sos_bridge_created">सहायता अनुरोध बन गया।</string>
+    <string name="sos_bridge_subject">टैग संदर्भ: %1$s</string>
+    <string name="sos_bridge_active_incident">इस व्यक्ति का पहले से एक खुला अनुरोध है।</string>
 </resources>

@@ -54,3 +54,6 @@ supabase/storage/
 # --- Agent Artifacts ---
 # Transient task plans, logs and walkthroughs
 .artifacts/
+
+ui-ux-modernizer/
+ui-ux-modernizer.skill

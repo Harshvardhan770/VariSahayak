@@ -1,9 +1,17 @@
 package com.varisahayak.core.di
 
 import com.varisahayak.data.repository.AuthRepositoryImpl
+import com.varisahayak.data.repository.IncidentRepositoryImpl
+import com.varisahayak.data.repository.LostFoundRepositoryImpl
 import com.varisahayak.data.repository.ProfileRepositoryImpl
+import com.varisahayak.data.repository.QrRepositoryImpl
+import com.varisahayak.data.repository.ResponderRepositoryImpl
 import com.varisahayak.domain.repository.AuthRepository
+import com.varisahayak.domain.repository.IncidentRepository
+import com.varisahayak.domain.repository.LostFoundRepository
 import com.varisahayak.domain.repository.ProfileRepository
+import com.varisahayak.domain.repository.QrRepository
+import com.varisahayak.domain.repository.ResponderRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -25,4 +33,28 @@ abstract class RepositoryModule {
     abstract fun bindProfileRepository(
         impl: ProfileRepositoryImpl
     ): ProfileRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindQrRepository(
+        impl: QrRepositoryImpl
+    ): QrRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindLostFoundRepository(
+        impl: LostFoundRepositoryImpl
+    ): LostFoundRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindIncidentRepository(
+        impl: IncidentRepositoryImpl
+    ): IncidentRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindResponderRepository(
+        impl: ResponderRepositoryImpl
+    ): ResponderRepository
 }
