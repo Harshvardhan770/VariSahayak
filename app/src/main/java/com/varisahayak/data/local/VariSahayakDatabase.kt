@@ -9,6 +9,7 @@ import com.varisahayak.data.local.dao.CustodyDao
 import com.varisahayak.data.local.dao.LostFoundDao
 import com.varisahayak.data.local.dao.LostFoundMatchDao
 import com.varisahayak.data.local.dao.QrLocationDao
+import com.varisahayak.data.local.dao.RewardDao
 import com.varisahayak.data.local.dao.MessageDao
 import com.varisahayak.data.local.dao.NotificationDao
 import com.varisahayak.data.local.dao.OutboxDao
@@ -21,6 +22,9 @@ import com.varisahayak.data.local.entity.CustodyEntity
 import com.varisahayak.data.local.entity.LostFoundEntity
 import com.varisahayak.data.local.entity.LostFoundMatchEntity
 import com.varisahayak.data.local.entity.QrLocationEntity
+import com.varisahayak.data.local.entity.RewardProfileEntity
+import com.varisahayak.data.local.entity.XPTransactionEntity
+import com.varisahayak.data.local.entity.UserBadgeEntity
 import com.varisahayak.data.local.entity.MessageEntity
 import com.varisahayak.data.local.entity.NotificationEntity
 import com.varisahayak.data.local.entity.OutboxEntity
@@ -51,8 +55,11 @@ import com.varisahayak.data.local.entity.ResponderEntity
         CustodyEntity::class,
         LostFoundMatchEntity::class,
         QrLocationEntity::class,
+        RewardProfileEntity::class,
+        XPTransactionEntity::class,
+        UserBadgeEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 abstract class VariSahayakDatabase : RoomDatabase() {
@@ -68,6 +75,7 @@ abstract class VariSahayakDatabase : RoomDatabase() {
     abstract fun custodyDao(): CustodyDao
     abstract fun lostFoundMatchDao(): LostFoundMatchDao
     abstract fun qrLocationDao(): QrLocationDao
+    abstract fun rewardDao(): RewardDao
 
     companion object {
         const val NAME = "varisahayak.db"

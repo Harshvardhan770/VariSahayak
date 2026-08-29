@@ -206,6 +206,14 @@
     <string name="profile_not_assigned">असाइन नहीं किया गया</string>
     <string name="profile_all_route">पूरा मार्ग</string>
 
+    <!-- Rewards -->
+    <string name="reward_level">स्तर %1$d</string>
+    <string name="reward_xp_to_next">स्तर %2$d के लिए %1$d XP शेष</string>
+    <string name="reward_impact_resolved">समाधान</string>
+    <string name="reward_impact_sos">SOS</string>
+    <string name="reward_impact_assisted">सहायता प्राप्त</string>
+    <string name="reward_badges">बैज</string>
+
     <string name="cd_priority_badge">प्राथमिकता: %1$s</string>
     <string name="cd_sync_badge">सिंक स्थिति: %1$s</string>
     <string name="cd_incident_marker">%1$s घटना, प्राथमिकता %2$s</string>

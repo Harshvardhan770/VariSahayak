@@ -15,10 +15,12 @@ import com.varisahayak.domain.model.IncidentStatus
 import com.varisahayak.domain.model.Profile
 import com.varisahayak.domain.model.Responder
 import com.varisahayak.domain.model.ResponderAvailability
+import com.varisahayak.domain.model.RewardProfile
 import com.varisahayak.domain.model.capabilities
 import com.varisahayak.domain.repository.IncidentRepository
 import com.varisahayak.domain.repository.ProfileRepository
 import com.varisahayak.domain.repository.ResponderRepository
+import com.varisahayak.domain.repository.RewardRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -33,6 +35,7 @@ import javax.inject.Inject
 
 data class DashboardUiState(
     val profile: Profile? = null,
+    val rewardProfile: RewardProfile? = null,
     /** What this role may do. Denies everything until the profile resolves. */
     val capabilities: Capabilities = Capabilities.NONE,
     val openIncidents: List<Incident> = emptyList(),
@@ -61,6 +64,7 @@ data class DashboardUiState(
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
     private val profileRepository: ProfileRepository,
+    private val rewardRepository: RewardRepository,
     private val incidentRepository: IncidentRepository,
     private val responderRepository: ResponderRepository,
     private val locationProvider: LocationProvider,
@@ -90,17 +94,26 @@ class DashboardViewModel @Inject constructor(
      */
     private val core = combine(
         profileRepository.observeCurrentProfile(),
+        rewardRepository.observeRewardProfile(),
         incidentRepository.observeOpen(),
         incidentRepository.observeActiveSos(),
         incidentRepository.observeUnsyncedCount(),
         connectivityObserver.isOnline,
-    ) { profile, openList, sosList, unsynced, isOnline ->
+    ) { args: Array<Any?> ->
+        val profile = args[0] as? Profile
+        val rewardProfile = args[1] as? RewardProfile
+        val openList = args[2] as? List<Incident> ?: emptyList()
+        val sosList = args[3] as? List<Incident> ?: emptyList()
+        val unsynced = args[4] as? Int ?: 0
+        val isOnline = args[5] as? Boolean ?: true
+
         val assigned = if (profile != null) {
             openList.filter { it.assigneeId == profile.userId }
         } else emptyList()
 
         DashboardUiState(
             profile = profile,
+            rewardProfile = rewardProfile,
             capabilities = profile.capabilities,
             openIncidents = openList,
             assignedIncidents = assigned,

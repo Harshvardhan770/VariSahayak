@@ -249,6 +249,14 @@
     <string name="profile_not_assigned">Not Assigned</string>
     <string name="profile_all_route">All Route</string>
 
+    <!-- Rewards -->
+    <string name="reward_level">Level %1$d</string>
+    <string name="reward_xp_to_next">%1$d XP to Level %2$d</string>
+    <string name="reward_impact_resolved">Resolved</string>
+    <string name="reward_impact_sos">SOS</string>
+    <string name="reward_impact_assisted">Assisted</string>
+    <string name="reward_badges">Badges</string>
+
     <!-- Accessibility content descriptions -->
     <string name="cd_priority_badge">Priority: %1$s</string>
     <string name="cd_sync_badge">Sync status: %1$s</string>

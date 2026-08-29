@@ -10,6 +10,7 @@ import com.varisahayak.data.local.dao.CustodyDao
 import com.varisahayak.data.local.dao.LostFoundDao
 import com.varisahayak.data.local.dao.LostFoundMatchDao
 import com.varisahayak.data.local.dao.QrLocationDao
+import com.varisahayak.data.local.dao.RewardDao
 import com.varisahayak.data.local.dao.MessageDao
 import com.varisahayak.data.local.dao.NotificationDao
 import com.varisahayak.data.local.dao.OutboxDao
@@ -79,4 +80,7 @@ object DatabaseModule {
 
     @Provides
     fun provideQrLocationDao(db: VariSahayakDatabase): QrLocationDao = db.qrLocationDao()
+
+    @Provides
+    fun provideRewardDao(db: VariSahayakDatabase): RewardDao = db.rewardDao()
 }
