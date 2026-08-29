@@ -18,7 +18,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Inbox
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -48,19 +47,15 @@ import com.varisahayak.core.designsystem.VariTheme
 
 @Composable
 fun LoadingState(modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        CircularProgressIndicator()
-        Text(
-            text = stringResource(R.string.state_loading),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = Dimens.SpaceMd),
-        )
-    }
+    LogoLoading(modifier = modifier)
+}
+
+/**
+ * A loading state that uses skeleton bars to mimic content structure.
+ */
+@Composable
+fun ShimmerLoadingState(modifier: Modifier = Modifier) {
+    SkeletonLoader(modifier = modifier)
 }
 
 /**

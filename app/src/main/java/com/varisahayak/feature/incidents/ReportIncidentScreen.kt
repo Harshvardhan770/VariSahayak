@@ -2,6 +2,10 @@ package com.varisahayak.feature.incidents
 
 import android.content.Intent
 import android.provider.Settings
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -81,6 +86,11 @@ fun ReportIncidentScreen(
         uiState.savedClientId?.let(onSaved)
     }
 
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        visible = true
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -88,93 +98,100 @@ fun ReportIncidentScreen(
             .padding(Dimens.ScreenPadding),
         verticalArrangement = Arrangement.spacedBy(Dimens.SpaceMd),
     ) {
-        if (uiState.isOffline) {
-            OfflineBanner()
-        }
-
-        if (uiState.isSos) {
-            Text(
-                text = stringResource(R.string.sos_bridge_title),
-                style = MaterialTheme.typography.headlineSmall,
-                color = VariTheme.colors.critical,
-            )
-        }
-
-        Text(
-            text = stringResource(R.string.report_category),
-            style = MaterialTheme.typography.titleMedium,
-        )
-
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceSm),
-            verticalArrangement = Arrangement.spacedBy(Dimens.SpaceSm),
+        AnimatedVisibility(
+            visible = visible,
+            enter = fadeIn(tween(600)) + slideInVertically(tween(600)) { -20 }
         ) {
-            IncidentCategory.entries.forEach { category ->
-                FilterChip(
-                    selected = uiState.category == category,
-                    onClick = { viewModel.onCategoryChanged(category) },
-                    label = { Text(stringResource(category.labelRes())) },
-                    modifier = Modifier.defaultMinSize(minHeight = Dimens.MinTouchTarget),
+            Column(verticalArrangement = Arrangement.spacedBy(Dimens.SpaceMd)) {
+                if (uiState.isOffline) {
+                    OfflineBanner()
+                }
+
+                if (uiState.isSos) {
+                    Text(
+                        text = stringResource(R.string.sos_bridge_title),
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = VariTheme.colors.critical,
+                    )
+                }
+
+                Text(
+                    text = stringResource(R.string.report_category),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceSm),
+                    verticalArrangement = Arrangement.spacedBy(Dimens.SpaceSm),
+                ) {
+                    IncidentCategory.entries.forEach { category ->
+                        FilterChip(
+                            selected = uiState.category == category,
+                            onClick = { viewModel.onCategoryChanged(category) },
+                            label = { Text(stringResource(category.labelRes())) },
+                            modifier = Modifier.defaultMinSize(minHeight = Dimens.MinTouchTarget),
+                        )
+                    }
+                }
+
+                OutlinedTextField(
+                    value = uiState.description,
+                    onValueChange = viewModel::onDescriptionChanged,
+                    label = { Text(stringResource(R.string.report_description)) },
+                    placeholder = { Text(stringResource(R.string.report_description_hint)) },
+                    minLines = 3,
+                    isError = (uiState.error as? AppError.Validation)
+                        ?.field == "description",
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
+                // Free text about the affected person is optional and deliberately unprompted for
+                // detail — the less personal data captured on a device in a crowd, the better.
+                OutlinedTextField(
+                    value = uiState.affectedPersonNote,
+                    onValueChange = viewModel::onAffectedPersonNoteChanged,
+                    label = { Text(stringResource(R.string.report_affected_person)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
+                LocationStatusLine(
+                    state = uiState.locationState,
+                    isPermanentlyDenied = permissions.isPermanentlyDenied,
+                    onRetry = viewModel::captureLocation,
+                    onGrantPermission = permissions::request,
+                    onOpenSettings = permissions::openAppSettings,
+                    onOpenLocationSettings = {
+                        context.startActivity(
+                            Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
+                                .apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) },
+                        )
+                    },
+                )
+
+                uiState.error?.let { error ->
+                    val message = (error as? AppError.Validation)?.message
+                        ?: stringResource(R.string.state_error)
+                    Text(
+                        text = message,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+
+                VariPrimaryButton(
+                    text = stringResource(R.string.report_submit),
+                    onClick = viewModel::submit,
+                    enabled = !uiState.isSubmitting,
+                )
+
+                Text(
+                    text = stringResource(R.string.report_saved_offline),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
-
-        OutlinedTextField(
-            value = uiState.description,
-            onValueChange = viewModel::onDescriptionChanged,
-            label = { Text(stringResource(R.string.report_description)) },
-            placeholder = { Text(stringResource(R.string.report_description_hint)) },
-            minLines = 3,
-            isError = (uiState.error as? AppError.Validation)
-                ?.field == "description",
-            modifier = Modifier.fillMaxWidth(),
-        )
-
-        // Free text about the affected person is optional and deliberately unprompted for
-        // detail — the less personal data captured on a device in a crowd, the better.
-        OutlinedTextField(
-            value = uiState.affectedPersonNote,
-            onValueChange = viewModel::onAffectedPersonNoteChanged,
-            label = { Text(stringResource(R.string.report_affected_person)) },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
-
-        LocationStatusLine(
-            state = uiState.locationState,
-            isPermanentlyDenied = permissions.isPermanentlyDenied,
-            onRetry = viewModel::captureLocation,
-            onGrantPermission = permissions::request,
-            onOpenSettings = permissions::openAppSettings,
-            onOpenLocationSettings = {
-                context.startActivity(
-                    Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
-                        .apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) },
-                )
-            },
-        )
-
-        uiState.error?.let { error ->
-            val message = (error as? AppError.Validation)?.message
-                ?: stringResource(R.string.state_error)
-            Text(
-                text = message,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.error,
-            )
-        }
-
-        VariPrimaryButton(
-            text = stringResource(R.string.report_submit),
-            onClick = viewModel::submit,
-            enabled = !uiState.isSubmitting,
-        )
-
-        Text(
-            text = stringResource(R.string.report_saved_offline),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }
 
