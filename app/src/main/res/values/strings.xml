@@ -169,6 +169,9 @@
     <string name="map_location_unavailable">Could not get your location just now.</string>
     <string name="map_hotspot_incidents">%1$d incidents</string>
     <string name="map_legend">Shape and colour both show priority</string>
+    <string name="map_show_palkhi">Show Palkhi tracks</string>
+    <string name="map_hide_palkhi">Hide Palkhi tracks</string>
+    <string name="map_palkhi_tracking">Palkhi Tracking</string>
     <string name="cd_map_my_location">Your position</string>
     <string name="cd_map_recenter">Recentre the map on your position</string>
     <string name="cd_map_hotspot">%1$d incidents, highest priority %2$s</string>

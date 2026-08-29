@@ -24,6 +24,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Route
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -193,6 +195,10 @@ fun IncidentMapScreen(
                 end = if (useSidePanel) Dimens.DrawerWidth else 0.dp,
             ),
         ) {
+            if (uiState.showPalkhiTracks) {
+                PalkhiMapContent(palkhis = uiState.palkhis, visible = true)
+            }
+            
             visibleHotspots.forEach { hotspot ->
                 HotspotMarker(
                     hotspot = hotspot,
@@ -220,6 +226,36 @@ fun IncidentMapScreen(
                 },
                 onClear = { selectedCategories = emptySet() },
             )
+
+            Row(
+                modifier = Modifier
+                    .padding(horizontal = Dimens.FloatingInset)
+                    .fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceSm),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                FilterChip(
+                    selected = uiState.showPalkhiTracks,
+                    onClick = viewModel::togglePalkhiTracks,
+                    label = { Text(stringResource(R.string.map_palkhi_tracking)) },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Route,
+                            contentDescription = null,
+                            modifier = Modifier.size(Dimens.IconSm)
+                        )
+                    }
+                )
+            }
+
+            AnimatedVisibility(
+                visible = uiState.showPalkhiTracks,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
+                PalkhiTrackingPanel(trackingInfo = uiState.palkhiTracking)
+            }
+
             uiState.locationMessage?.let { message ->
                 LocationMessageCard(
                     message = message,
