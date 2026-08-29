@@ -7,6 +7,7 @@ import com.varisahayak.core.common.Outcome
 import com.varisahayak.core.common.UiState
 import com.varisahayak.data.sync.SyncScheduler
 import com.varisahayak.domain.repository.AuthRepository
+import com.varisahayak.domain.repository.DeviceTokenRepository
 import com.varisahayak.domain.repository.ProfileRepository
 import com.varisahayak.core.common.onFailure
 import com.varisahayak.core.common.onSuccess
@@ -30,6 +31,7 @@ class SignInViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val profileRepository: ProfileRepository,
     private val syncScheduler: SyncScheduler,
+    private val deviceTokenRepository: DeviceTokenRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SignInUiState())
@@ -65,6 +67,10 @@ class SignInViewModel @Inject constructor(
                     // Fill the local store before the first dashboard frame, so a
                     // responder signing in sees the open queue rather than an empty one.
                     syncScheduler.requestSync()
+                    // A token issued before anyone signed in was never attached to a
+                    // profile. This is where it gets one. Failure is logged and ignored:
+                    // push is best-effort and must never block a sign-in.
+                    deviceTokenRepository.registerCurrentToken()
                     _uiState.update { it.copy(isLoading = false) }
                 }
                 .onFailure { error ->

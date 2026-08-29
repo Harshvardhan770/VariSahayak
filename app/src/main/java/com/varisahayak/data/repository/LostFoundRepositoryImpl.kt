@@ -1,27 +1,41 @@
 package com.varisahayak.data.repository
 
+import android.util.Log
 import com.varisahayak.core.common.AppError
 import com.varisahayak.core.common.Clock
 import com.varisahayak.core.common.DispatcherProvider
 import com.varisahayak.core.common.Outcome
+import com.varisahayak.data.local.dao.CustodyDao
 import com.varisahayak.data.local.dao.LostFoundDao
-import com.varisahayak.data.local.entity.LostFoundEntity
-import com.varisahayak.data.remote.dto.LostFoundDto
+import com.varisahayak.data.local.dao.LostFoundMatchDao
+import com.varisahayak.data.local.entity.CustodyEntity
+import com.varisahayak.data.local.entity.LostFoundMatchEntity
+import com.varisahayak.data.remote.dto.LostFoundMatchDto
+import com.varisahayak.data.remote.dto.LostFoundReportDto
+import com.varisahayak.data.sync.SyncScheduler
+import com.varisahayak.domain.model.CustodyRecord
+import com.varisahayak.domain.model.FaceMatchStatus
 import com.varisahayak.domain.model.GeoPoint
 import com.varisahayak.domain.model.IncidentCategory
-import com.varisahayak.domain.model.LostFoundItem
 import com.varisahayak.domain.model.LostFoundKind
+import com.varisahayak.domain.model.LostFoundMatch
+import com.varisahayak.domain.model.LostFoundReport
 import com.varisahayak.domain.model.LostFoundStatus
+import com.varisahayak.domain.model.LostFoundSubjectType
+import com.varisahayak.domain.model.MatchStatus
 import com.varisahayak.domain.model.SyncState
+import com.varisahayak.domain.repository.AttributeSearch
 import com.varisahayak.domain.repository.IncidentRepository
 import com.varisahayak.domain.repository.LostFoundRepository
+import com.varisahayak.domain.repository.ReportDetails
+import com.varisahayak.domain.usecase.LostFoundMatchingEngine
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.from
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
-import java.time.Instant
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -30,131 +44,556 @@ import javax.inject.Singleton
 class LostFoundRepositoryImpl @Inject constructor(
     private val supabase: SupabaseClient,
     private val lostFoundDao: LostFoundDao,
+    private val custodyDao: CustodyDao,
+    private val matchDao: LostFoundMatchDao,
     private val incidentRepository: IncidentRepository,
+    private val matchingEngine: LostFoundMatchingEngine,
+    private val syncScheduler: SyncScheduler,
     private val dispatchers: DispatcherProvider,
     private val clock: Clock,
 ) : LostFoundRepository {
 
-    override fun observeAll(): Flow<List<LostFoundItem>> =
-        lostFoundDao.observeAll().map { entities -> entities.map { it.toDomain() } }
+    override fun observeAll(): Flow<List<LostFoundReport>> =
+        lostFoundDao.observeAll().map { rows -> rows.map { it.toDomain() } }
 
-    override fun search(query: String): Flow<List<LostFoundItem>> =
-        lostFoundDao.search(query).map { entities -> entities.map { it.toDomain() } }
+    override fun observeByKind(kind: LostFoundKind): Flow<List<LostFoundReport>> =
+        lostFoundDao.observeByKind(kind.wireName).map { rows -> rows.map { it.toDomain() } }
 
-    override suspend fun report(
-        kind: LostFoundKind,
-        title: String,
-        description: String,
-        lastSeenLocation: GeoPoint?,
-        qrToken: String?,
-        photoLocalPath: String?,
-    ): Outcome<LostFoundItem> = withContext(dispatchers.io) {
-        if (title.isBlank()) {
-            return@withContext Outcome.Failure(
-                AppError.Validation(field = "title", message = "Add a short title"),
-            )
+    override fun observeActive(): Flow<List<LostFoundReport>> =
+        lostFoundDao.observeActive().map { rows -> rows.map { it.toDomain() } }
+
+    override fun observeById(clientId: String): Flow<LostFoundReport?> =
+        lostFoundDao.observeByClientId(clientId).map { it?.toDomain() }
+
+    override fun search(query: String): Flow<List<LostFoundReport>> =
+        lostFoundDao.search(query).map { rows -> rows.map { it.toDomain() } }
+
+    /**
+     * Structured filtering, applied in memory over the active set.
+     *
+     * In memory rather than in SQL because every filter is optional and most are ranges —
+     * expressing that as one query means a dozen `(:x IS NULL OR col = :x)` clauses that
+     * defeat every index anyway. The active set is a few hundred rows on a route.
+     */
+    override fun searchStructured(criteria: AttributeSearch): Flow<List<LostFoundReport>> =
+        lostFoundDao.observeAll().map { rows ->
+            rows.map { it.toDomain() }.filter { report -> report.matches(criteria) }
         }
 
-        val reporterId = supabase.auth.currentUserOrNull()?.id
-            ?: return@withContext Outcome.Failure(AppError.Unauthorised())
+    override fun observeUnsyncedCount(): Flow<Int> = lostFoundDao.observeUnsyncedCount()
 
-        val now = clock.nowEpochMillis()
+    // --- reporting ----------------------------------------------------------------------------
 
-        // A missing person is an emergency, not a filing task: raise the incident first so
-        // it enters matching and notification immediately, then attach the searchable
-        // record to it. If the incident fails, the report is still saved locally.
-        val incidentClientId = if (kind == LostFoundKind.PERSON) {
-            incidentRepository.createIncident(
-                category = IncidentCategory.LOST_PERSON,
-                description = "$title — $description",
-                location = lastSeenLocation,
-                photoLocalPath = photoLocalPath,
-                affectedPersonNote = null,
-                isSos = false,
-                sosBridgeToken = qrToken,
-            ).let { outcome ->
-                (outcome as? Outcome.Success)?.data?.clientId
+    override suspend fun report(details: ReportDetails): Outcome<LostFoundReport> =
+        withContext(dispatchers.io) {
+            val title = details.title.trim()
+            if (title.isBlank()) {
+                return@withContext Outcome.Failure(
+                    AppError.Validation(
+                        field = "title",
+                        message = "Add a short description of who or what is missing.",
+                    ),
+                )
             }
-        } else {
-            null
+
+            // Deliberately the *only* other validation. A photograph, a name, an age, a
+            // location — every one of them is optional, because a parent who reaches a
+            // volunteer at dusk with none of them must still be able to file something the
+            // engine can match on.
+            if (details.approximateAge != null && details.approximateAge !in 0..120) {
+                return@withContext Outcome.Failure(
+                    AppError.Validation(
+                        field = "approximateAge",
+                        message = "Enter an approximate age between 0 and 120.",
+                    ),
+                )
+            }
+
+            val reporterId = supabase.auth.currentUserOrNull()?.id
+                ?: return@withContext Outcome.Failure(AppError.Unauthorised())
+
+            val now = clock.nowEpochMillis()
+
+            // A missing person is an emergency, not a filing task. The incident is raised
+            // first so it enters prioritisation, matching and notification immediately; the
+            // searchable record is attached to it. A failed incident does not lose the
+            // report — it is still saved locally and retried.
+            val incidentClientId = if (details.subjectType == LostFoundSubjectType.PERSON &&
+                details.kind == LostFoundKind.LOST
+            ) {
+                (
+                    incidentRepository.createIncident(
+                        category = IncidentCategory.LOST_PERSON,
+                        description = buildIncidentDescription(details),
+                        location = details.lastKnownLocation ?: details.deviceLocation,
+                        photoLocalPath = details.photoLocalPath,
+                        affectedPersonNote = null,
+                        isSos = false,
+                        sosBridgeToken = details.qrLocationToken,
+                    ) as? Outcome.Success
+                    )?.data?.clientId
+            } else {
+                null
+            }
+
+            val report = LostFoundReport(
+                clientId = UUID.randomUUID().toString(),
+                incidentClientId = incidentClientId,
+                kind = details.kind,
+                subjectType = details.subjectType,
+                title = title,
+                description = details.description.trim(),
+                personName = details.personName?.trim()?.ifBlank { null },
+                approximateAge = details.approximateAge,
+                gender = details.gender?.trim()?.ifBlank { null },
+                approximateHeightCm = details.approximateHeightCm,
+                clothingDescription = details.clothingDescription?.trim()?.ifBlank { null },
+                physicalDescription = details.physicalDescription?.trim()?.ifBlank { null },
+                language = details.language?.trim()?.ifBlank { null },
+                condition = details.condition?.trim()?.ifBlank { null },
+                additionalNotes = details.additionalNotes?.trim()?.ifBlank { null },
+                guardianName = details.guardianName?.trim()?.ifBlank { null },
+                guardianPhone = details.guardianPhone?.trim()?.ifBlank { null },
+                qrLocationToken = details.qrLocationToken,
+                qrLocationName = details.qrLocationName,
+                deviceLocation = details.deviceLocation,
+                lastKnownLocation = details.lastKnownLocation ?: details.deviceLocation,
+                routeSegment = details.routeSegment,
+                routeSequence = details.routeSequence,
+                occurredAtEpochMillis = details.occurredAtEpochMillis ?: now,
+                reportedAtEpochMillis = now,
+                photoLocalPath = details.photoLocalPath,
+                // PENDING when a photo exists: the server owns this field and decides
+                // whether the image yields a usable embedding.
+                faceMatchStatus = if (details.photoLocalPath != null) {
+                    FaceMatchStatus.PENDING
+                } else {
+                    FaceMatchStatus.NOT_APPLICABLE
+                },
+                // Whoever files a Found report is holding the person until they say
+                // otherwise. Recorded immediately so "who has this child" is never blank.
+                custodianUserId = if (details.kind == LostFoundKind.FOUND) reporterId else null,
+                status = LostFoundStatus.OPEN,
+                reportedBy = reporterId,
+                syncState = SyncState.PENDING,
+            )
+
+            lostFoundDao.upsert(report.toEntity())
+
+            if (details.kind == LostFoundKind.FOUND) {
+                recordCustodyInternal(
+                    reportClientId = report.clientId,
+                    custodianUserId = reporterId,
+                    custodianName = null,
+                    helpPointName = details.qrLocationName,
+                    qrLocationToken = details.qrLocationToken,
+                    location = details.deviceLocation,
+                    handoverNote = null,
+                    at = now,
+                )
+            }
+
+            // Candidates immediately and locally, so a volunteer who has just filed sees
+            // the other side of the board without waiting for a network round trip.
+            runCatching { findCandidates(report.clientId) }
+                .onFailure { Log.d(TAG, "Local candidate pass skipped: ${it.message}") }
+
+            syncScheduler.requestSync()
+            Outcome.Success(report)
         }
 
-        val entity = LostFoundEntity(
+    override suspend fun update(
+        clientId: String,
+        mutate: (LostFoundReport) -> LostFoundReport,
+    ): Outcome<LostFoundReport> = withContext(dispatchers.io) {
+        val existing = lostFoundDao.getByClientId(clientId)?.toDomain()
+            ?: return@withContext Outcome.Failure(AppError.NotFound())
+
+        val updated = mutate(existing).let { next ->
+            // Replacing the photo invalidates any prior face verdict: the new image has to
+            // be processed before it can contribute a face signal again.
+            if (next.photoLocalPath != existing.photoLocalPath && next.photoLocalPath != null) {
+                next.copy(faceMatchStatus = FaceMatchStatus.PENDING)
+            } else {
+                next
+            }
+        }.copy(syncState = SyncState.PENDING)
+
+        lostFoundDao.upsert(updated.toEntity())
+        syncScheduler.requestSync()
+        Outcome.Success(updated)
+    }
+
+    override suspend fun setStatus(clientId: String, status: LostFoundStatus): Outcome<Unit> =
+        withContext(dispatchers.io) {
+            lostFoundDao.getByClientId(clientId)
+                ?: return@withContext Outcome.Failure(AppError.NotFound())
+
+            lostFoundDao.setStatus(clientId, status.wireName)
+            lostFoundDao.setSyncState(clientId, SyncState.PENDING.name)
+            syncScheduler.requestSync()
+            Outcome.Success(Unit)
+        }
+
+    // --- custody ------------------------------------------------------------------------------
+
+    override fun observeCustodyChain(reportClientId: String): Flow<List<CustodyRecord>> =
+        custodyDao.observeForReport(reportClientId).map { rows -> rows.map { it.toDomain() } }
+
+    override suspend fun recordCustody(
+        reportClientId: String,
+        custodianUserId: String,
+        custodianName: String?,
+        helpPointName: String?,
+        qrLocationToken: String?,
+        location: GeoPoint?,
+        handoverNote: String?,
+    ): Outcome<CustodyRecord> = withContext(dispatchers.io) {
+        lostFoundDao.getByClientId(reportClientId)
+            ?: return@withContext Outcome.Failure(AppError.NotFound())
+
+        val record = recordCustodyInternal(
+            reportClientId = reportClientId,
+            custodianUserId = custodianUserId,
+            custodianName = custodianName,
+            helpPointName = helpPointName,
+            qrLocationToken = qrLocationToken,
+            location = location,
+            handoverNote = handoverNote,
+            at = clock.nowEpochMillis(),
+        )
+
+        syncScheduler.requestSync()
+        Outcome.Success(record.toDomain())
+    }
+
+    /**
+     * Writes the custody span and mirrors the current holder onto the report.
+     *
+     * The mirror is denormalisation on purpose: the list and map views need "who has this
+     * person" without joining a chain per row, and that question is asked constantly.
+     */
+    private suspend fun recordCustodyInternal(
+        reportClientId: String,
+        custodianUserId: String,
+        custodianName: String?,
+        helpPointName: String?,
+        qrLocationToken: String?,
+        location: GeoPoint?,
+        handoverNote: String?,
+        at: Long,
+    ): CustodyEntity {
+        val record = CustodyEntity(
             clientId = UUID.randomUUID().toString(),
-            incidentClientId = incidentClientId,
-            kind = kind.wireName,
-            title = title,
-            description = description,
-            lastSeenLatitude = lastSeenLocation?.latitude,
-            lastSeenLongitude = lastSeenLocation?.longitude,
-            lastSeenAtEpochMillis = now,
-            qrToken = qrToken,
-            photoLocalPath = photoLocalPath,
-            status = LostFoundStatus.OPEN.wireName,
-            reportedBy = reporterId,
-            reportedAtEpochMillis = now,
+            reportClientId = reportClientId,
+            custodianUserId = custodianUserId,
+            custodianName = custodianName,
+            helpPointName = helpPointName,
+            qrLocationToken = qrLocationToken,
+            latitude = location?.latitude,
+            longitude = location?.longitude,
+            fromEpochMillis = at,
+            untilEpochMillis = null,
+            handoverNote = handoverNote,
             syncState = SyncState.PENDING.name,
         )
 
-        lostFoundDao.upsert(entity)
-        Outcome.Success(entity.toDomain())
+        custodyDao.handOver(record)
+        lostFoundDao.setCustodian(reportClientId, custodianUserId, custodianName, null)
+        lostFoundDao.setSyncState(reportClientId, SyncState.PENDING.name)
+
+        return record
     }
 
-    override suspend fun syncPending(): Outcome<Unit> = withContext(dispatchers.io) {
-        try {
-            lostFoundDao.getPendingSync().forEach { entity ->
-                val dto = LostFoundDto(
-                    clientId = entity.clientId,
-                    incidentClientId = entity.incidentClientId,
-                    kind = entity.kind,
-                    title = entity.title,
-                    description = entity.description,
-                    lastSeenLatitude = entity.lastSeenLatitude,
-                    lastSeenLongitude = entity.lastSeenLongitude,
-                    lastSeenAt = entity.lastSeenAtEpochMillis
-                        ?.let { Instant.ofEpochMilli(it).toString() },
-                    qrToken = entity.qrToken,
-                    status = entity.status,
-                    reportedBy = entity.reportedBy,
-                    reportedAt = Instant.ofEpochMilli(entity.reportedAtEpochMillis).toString(),
+    // --- matching -----------------------------------------------------------------------------
+
+    override fun observeCandidateMatches(): Flow<List<LostFoundMatch>> =
+        matchDao.observeCandidates().map { rows -> rows.map { it.toDomain() } }
+
+    override fun observeMatchesForReport(reportClientId: String): Flow<List<LostFoundMatch>> =
+        matchDao.observeForReport(reportClientId).map { rows -> rows.map { it.toDomain() } }
+
+    override fun observeMatchById(clientId: String): Flow<LostFoundMatch?> =
+        matchDao.observeByClientId(clientId).map { it?.toDomain() }
+
+    override fun observeCandidateCount(): Flow<Int> = matchDao.observeCandidateCount()
+
+    override suspend fun findCandidates(reportClientId: String): Outcome<List<LostFoundMatch>> =
+        withContext(dispatchers.io) {
+            val subject = lostFoundDao.getByClientId(reportClientId)?.toDomain()
+                ?: return@withContext Outcome.Failure(AppError.NotFound())
+
+            val pool = lostFoundDao.getActiveByKind(subject.kind.opposite.wireName)
+                .map { it.toDomain() }
+
+            // Face distances come from the server and are only ever available once both
+            // sides have been processed. Their absence is "cannot compare", which the
+            // engine scores as no signal — never as a mismatch.
+            val ranked = matchingEngine.rank(subject, pool, faceDistances = emptyMap())
+
+            val now = clock.nowEpochMillis()
+            val created = mutableListOf<LostFoundMatchEntity>()
+
+            ranked.forEach { candidate ->
+                val lostId = if (subject.kind == LostFoundKind.LOST) {
+                    subject.clientId
+                } else {
+                    candidate.report.clientId
+                }
+                val foundId = if (subject.kind == LostFoundKind.LOST) {
+                    candidate.report.clientId
+                } else {
+                    subject.clientId
+                }
+
+                val existing = matchDao.findPair(lostId, foundId)
+
+                // A pair a human has already ruled on is never re-raised. Without this the
+                // engine would re-notify both volunteers on every pass, and a rejected
+                // candidate would keep coming back.
+                if (existing != null && existing.status != MatchStatus.CANDIDATE.wireName) {
+                    return@forEach
+                }
+
+                val entity = LostFoundMatchEntity(
+                    clientId = existing?.clientId ?: UUID.randomUUID().toString(),
+                    serverId = existing?.serverId,
+                    lostReportClientId = lostId,
+                    foundReportClientId = foundId,
+                    overallScore = candidate.score.overall,
+                    confidence = candidate.score.confidence.name,
+                    signalsJson = candidate.score.signals.toJson(),
+                    status = MatchStatus.CANDIDATE.wireName,
+                    createdAtEpochMillis = existing?.createdAtEpochMillis ?: now,
+                    syncState = SyncState.PENDING.name,
                 )
 
-                // Upsert on client_id, never insert: a retried send updates the same row
-                // instead of filing a second report for the same missing person.
+                matchDao.upsert(entity)
+                created += entity
+            }
+
+            if (created.isNotEmpty()) {
+                // The report is now under review rather than merely open, on both sides.
+                lostFoundDao.setStatus(reportClientId, LostFoundStatus.MATCHED.wireName)
+                syncScheduler.requestSync()
+            }
+
+            Outcome.Success(created.map { it.toDomain() })
+        }
+
+    override suspend fun reviewMatch(
+        matchClientId: String,
+        verdict: MatchStatus,
+        note: String?,
+    ): Outcome<LostFoundMatch> = withContext(dispatchers.io) {
+        if (verdict == MatchStatus.CANDIDATE) {
+            return@withContext Outcome.Failure(
+                AppError.Validation(
+                    field = "verdict",
+                    message = "Confirm or reject the match.",
+                ),
+            )
+        }
+
+        val existing = matchDao.getByClientId(matchClientId)
+            ?: return@withContext Outcome.Failure(AppError.NotFound())
+
+        val reviewerId = supabase.auth.currentUserOrNull()?.id
+            ?: return@withContext Outcome.Failure(AppError.Unauthorised())
+
+        val now = clock.nowEpochMillis()
+        val reviewed = existing.copy(
+            status = verdict.wireName,
+            reviewedBy = reviewerId,
+            reviewedAtEpochMillis = now,
+            reviewNote = note?.trim()?.ifBlank { null },
+            syncState = SyncState.PENDING.name,
+        )
+        matchDao.upsert(reviewed)
+
+        // Only a human confirmation closes a case. Facial similarity, however strong,
+        // never gets here on its own.
+        if (verdict == MatchStatus.CONFIRMED) {
+            lostFoundDao.setStatus(
+                existing.lostReportClientId,
+                LostFoundStatus.REUNITED.wireName,
+            )
+            lostFoundDao.setStatus(
+                existing.foundReportClientId,
+                LostFoundStatus.REUNITED.wireName,
+            )
+            lostFoundDao.setSyncState(existing.lostReportClientId, SyncState.PENDING.name)
+            lostFoundDao.setSyncState(existing.foundReportClientId, SyncState.PENDING.name)
+        } else {
+            // A rejection returns both reports to the pool. Neither underlying report is
+            // altered by having been wrongly paired.
+            listOf(existing.lostReportClientId, existing.foundReportClientId).forEach { id ->
+                // Counts every candidate, not just unsynced ones. A report whose other
+                // candidate had already reached the server would otherwise be reopened
+                // while a volunteer was still reviewing it.
+                if (matchDao.countCandidatesFor(id) == 0) {
+                    lostFoundDao.setStatus(id, LostFoundStatus.OPEN.wireName)
+                    lostFoundDao.setSyncState(id, SyncState.PENDING.name)
+                }
+            }
+        }
+
+        syncScheduler.requestSync()
+        Outcome.Success(reviewed.toDomain())
+    }
+
+    // --- sync ---------------------------------------------------------------------------------
+
+    override suspend fun syncPending(): Outcome<Unit> = withContext(dispatchers.io) {
+        var failed = false
+
+        lostFoundDao.getPendingSync().forEach { entity ->
+            try {
                 val saved = supabase.from("lost_found_items")
-                    .upsert(dto) {
+                    .upsert(entity.toUploadDto()) {
+                        // Upsert on client_id, never insert: a retried send updates the same
+                        // row instead of filing a second report for the same missing child.
                         onConflict = "client_id"
                         select()
                     }
-                    .decodeSingle<LostFoundDto>()
+                    .decodeSingle<LostFoundReportDto>()
 
                 saved.id?.let { lostFoundDao.markSynced(entity.clientId, it) }
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (error: Exception) {
+                failed = true
+                lostFoundDao.setSyncState(entity.clientId, SyncState.FAILED.name)
             }
+        }
+
+        custodyDao.getPendingSync().forEach { record ->
+            try {
+                supabase.from("lost_found_custody")
+                    .upsert(record.toDto()) { onConflict = "client_id" }
+                custodyDao.markSynced(record.clientId)
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (error: Exception) {
+                failed = true
+            }
+        }
+
+        matchDao.getPendingSync().forEach { match ->
+            try {
+                val saved = supabase.from("lost_found_matches")
+                    .upsert(match.toDto()) {
+                        onConflict = "client_id"
+                        select()
+                    }
+                    .decodeSingle<LostFoundMatchDto>()
+
+                saved.id?.let { matchDao.markSynced(match.clientId, it) }
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (error: Exception) {
+                failed = true
+            }
+        }
+
+        // Nothing is ever discarded. A record that could not be sent stays PENDING or
+        // FAILED, stays visible, and is retried.
+        if (failed) {
+            Outcome.Failure(AppError.Network())
+        } else {
             Outcome.Success(Unit)
+        }
+    }
+
+    override suspend fun refreshFromServer(): Outcome<Unit> = withContext(dispatchers.io) {
+        try {
+            val now = clock.nowEpochMillis()
+
+            supabase.from("lost_found_items")
+                .select()
+                .decodeList<LostFoundReportDto>()
+                .forEach { lostFoundDao.reconcileFromServer(it.toEntity(now)) }
+
+            // Server-side matching runs after face processing, so candidates raised there
+            // reach the device here rather than only ever being computed locally.
+            val remoteMatches = supabase.from("lost_found_matches")
+                .select()
+                .decodeList<LostFoundMatchDto>()
+                .map { it.toEntity(now) }
+                .filter { remote ->
+                    // Never overwrite a verdict this device has recorded but not yet sent.
+                    matchDao.getByClientId(remote.clientId)?.syncState != SyncState.PENDING.name
+                }
+
+            matchDao.upsertAll(remoteMatches)
+            Outcome.Success(Unit)
+        } catch (cancellation: CancellationException) {
+            throw cancellation
         } catch (error: Exception) {
-            // Records stay PENDING and are retried. Nothing is discarded.
             Outcome.Failure(AppError.Network(cause = error))
         }
     }
+
+    private fun buildIncidentDescription(details: ReportDetails): String = buildString {
+        append(details.title.trim())
+        details.approximateAge?.let { append(", approx $it years old") }
+        details.clothingDescription?.takeIf { it.isNotBlank() }?.let { append(". Wearing $it") }
+        details.qrLocationName?.takeIf { it.isNotBlank() }?.let { append(". Last seen near $it") }
+    }
+
+    private companion object {
+        const val TAG = "LostFoundRepository"
+    }
 }
 
-private fun LostFoundEntity.toDomain(): LostFoundItem = LostFoundItem(
-    clientId = clientId,
-    serverId = serverId,
-    incidentClientId = incidentClientId,
-    kind = LostFoundKind.fromWire(kind),
-    title = title,
-    description = description,
-    lastSeenLocation = if (lastSeenLatitude != null && lastSeenLongitude != null) {
-        GeoPoint(latitude = lastSeenLatitude, longitude = lastSeenLongitude)
-    } else {
-        null
-    },
-    lastSeenAtEpochMillis = lastSeenAtEpochMillis,
-    qrToken = qrToken,
-    photoLocalPath = photoLocalPath,
-    status = LostFoundStatus.fromWire(status),
-    reportedBy = reportedBy,
-    reportedAtEpochMillis = reportedAtEpochMillis,
-    syncState = runCatching { SyncState.valueOf(syncState) }.getOrDefault(SyncState.PENDING),
-)
+/** In-memory application of the structured filters from §7.24. */
+private fun LostFoundReport.matches(criteria: AttributeSearch): Boolean {
+    criteria.kind?.let { if (kind != it) return false }
+    criteria.subjectType?.let { if (subjectType != it) return false }
+    criteria.status?.let { if (status != it) return false }
+
+    // A range filter excludes a report only when the report actually states an age. An
+    // unknown age is unknown, not out of range — excluding it would hide the very reports
+    // that most need a human eye.
+    if (criteria.minAge != null && approximateAge != null && approximateAge < criteria.minAge) {
+        return false
+    }
+    if (criteria.maxAge != null && approximateAge != null && approximateAge > criteria.maxAge) {
+        return false
+    }
+
+    criteria.gender?.takeIf { it.isNotBlank() }?.let { wanted ->
+        if (gender != null && !gender.equals(wanted, ignoreCase = true)) return false
+    }
+    criteria.language?.takeIf { it.isNotBlank() }?.let { wanted ->
+        if (language != null && !language.equals(wanted, ignoreCase = true)) return false
+    }
+
+    if (criteria.routeSequenceFrom != null && routeSequence != null &&
+        routeSequence < criteria.routeSequenceFrom
+    ) {
+        return false
+    }
+    if (criteria.routeSequenceTo != null && routeSequence != null &&
+        routeSequence > criteria.routeSequenceTo
+    ) {
+        return false
+    }
+
+    val occurred = occurredAtEpochMillis ?: reportedAtEpochMillis
+    criteria.fromEpochMillis?.let { if (occurred < it) return false }
+    criteria.toEpochMillis?.let { if (occurred > it) return false }
+
+    if (criteria.onlyWithPhoto && !hasPhoto) return false
+
+    criteria.text?.trim()?.takeIf { it.isNotEmpty() }?.let { text ->
+        val haystack = listOfNotNull(
+            title, description, personName, clothingDescription,
+            physicalDescription, language, qrLocationName, additionalNotes,
+        ).joinToString(" ").lowercase()
+
+        if (!haystack.contains(text.lowercase())) return false
+    }
+
+    return true
+}

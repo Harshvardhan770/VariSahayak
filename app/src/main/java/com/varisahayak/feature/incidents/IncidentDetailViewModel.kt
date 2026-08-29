@@ -7,15 +7,20 @@ import androidx.navigation.toRoute
 import com.varisahayak.app.navigation.Destination
 import com.varisahayak.core.common.AppError
 import com.varisahayak.core.common.Outcome
+import com.varisahayak.domain.model.Capabilities
 import com.varisahayak.domain.model.Incident
-import com.varisahayak.domain.model.IncidentStateMachine
 import com.varisahayak.domain.model.IncidentStatus
+import com.varisahayak.domain.model.capabilities
+import com.varisahayak.domain.repository.AuthRepository
 import com.varisahayak.domain.repository.IncidentRepository
+import com.varisahayak.domain.repository.ProfileRepository
+import com.varisahayak.domain.usecase.IncidentActionPolicy
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -30,6 +35,8 @@ data class IncidentDetailUiState(
 @HiltViewModel
 class IncidentDetailViewModel @Inject constructor(
     private val incidentRepository: IncidentRepository,
+    private val profileRepository: ProfileRepository,
+    private val authRepository: AuthRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -38,16 +45,31 @@ class IncidentDetailViewModel @Inject constructor(
     val incident: StateFlow<Incident?> = incidentRepository.observeById(clientId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
+    /** What this role may do at all, regardless of which incident is open. */
+    val capabilities: StateFlow<Capabilities> = profileRepository.observeCurrentProfile()
+        .map { it.capabilities }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Capabilities.NONE)
+
     /**
-     * Only the transitions the state machine actually permits are offered. Showing a
-     * button that will be refused is worse than not showing it.
+     * The actions to offer: legal by the state machine, permitted for this role, and
+     * permitted on *this* incident given whether the user reported it, is assigned to it,
+     * or is neither. Showing a button that will be refused is worse than not showing it —
+     * and every one of these rules is enforced again by RLS server-side.
      */
-    val availableActions: StateFlow<List<IncidentStatus>> = incidentRepository
-        .observeById(clientId)
-        .map { current ->
-            current?.let { IncidentStateMachine.allowedTransitions(it.status).toList() }.orEmpty()
+    val availableActions: StateFlow<List<IncidentStatus>> = combine(
+        incidentRepository.observeById(clientId),
+        profileRepository.observeCurrentProfile(),
+    ) { current, profile ->
+        if (current == null) {
+            emptyList()
+        } else {
+            IncidentActionPolicy.allowedActions(
+                incident = current,
+                capabilities = profile.capabilities,
+                userId = profile?.userId ?: authRepository.currentUserId(),
+            )
         }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private val _uiState = MutableStateFlow(IncidentDetailUiState())
     val uiState: StateFlow<IncidentDetailUiState> = _uiState.asStateFlow()

@@ -125,16 +125,132 @@ data class LostFoundEntity(
     @PrimaryKey val clientId: String,
     val serverId: String? = null,
     val incidentClientId: String? = null,
+    /** LOST or FOUND. Both sides are first-class and independent. */
     val kind: String,
+    /** PERSON or ITEM. */
+    val subjectType: String,
     val title: String,
-    val description: String,
-    val lastSeenLatitude: Double? = null,
-    val lastSeenLongitude: Double? = null,
-    val lastSeenAtEpochMillis: Long? = null,
-    val qrToken: String? = null,
+    val description: String = "",
+
+    // Person attributes. All nullable: a parent with no photograph and half a description
+    // must still be able to file a complete, matchable report.
+    val personName: String? = null,
+    val approximateAge: Int? = null,
+    val gender: String? = null,
+    val approximateHeightCm: Int? = null,
+    val clothingDescription: String? = null,
+    val physicalDescription: String? = null,
+    val language: String? = null,
+    val condition: String? = null,
+    val additionalNotes: String? = null,
+
+    val guardianName: String? = null,
+    val guardianPhone: String? = null,
+
+    // Three distinct locations, never conflated: the fixed sign, the device's fix, and
+    // the best current belief a volunteer may correct by hand.
+    val qrLocationToken: String? = null,
+    val qrLocationName: String? = null,
+    val deviceLatitude: Double? = null,
+    val deviceLongitude: Double? = null,
+    val lastKnownLatitude: Double? = null,
+    val lastKnownLongitude: Double? = null,
+    val routeSegment: String? = null,
+    val routeSequence: Int? = null,
+
+    val occurredAtEpochMillis: Long? = null,
+    val reportedAtEpochMillis: Long,
+
     val photoLocalPath: String? = null,
+    val photoRemotePath: String? = null,
+    /** Result of server-side face processing. Never blocks the report. */
+    val faceMatchStatus: String = "NOT_APPLICABLE",
+
+    val custodianUserId: String? = null,
+    val custodianName: String? = null,
+    val custodianContact: String? = null,
+
     val status: String,
     val reportedBy: String,
-    val reportedAtEpochMillis: Long,
     val syncState: String,
+)
+
+/**
+ * Who is holding a found person, and where — kept as a chain rather than one mutable
+ * field so a handover at a shift change does not erase who had the child before.
+ */
+@Entity(
+    tableName = "lost_found_custody",
+    indices = [Index(value = ["reportClientId"]), Index(value = ["custodianUserId"])],
+)
+data class CustodyEntity(
+    @PrimaryKey val clientId: String,
+    val reportClientId: String,
+    val custodianUserId: String,
+    val custodianName: String? = null,
+    val helpPointName: String? = null,
+    val qrLocationToken: String? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val fromEpochMillis: Long,
+    /** Null while this is the current custodian. */
+    val untilEpochMillis: Long? = null,
+    val handoverNote: String? = null,
+    val syncState: String,
+)
+
+/**
+ * A proposed Lost <-> Found pairing awaiting human review.
+ *
+ * The score and its explanation are cached locally so a volunteer can review a candidate
+ * on the route with no connectivity.
+ */
+@Entity(
+    tableName = "lost_found_matches",
+    indices = [
+        Index(value = ["lostReportClientId"]),
+        Index(value = ["foundReportClientId"]),
+        Index(value = ["status"]),
+        Index(value = ["lostReportClientId", "foundReportClientId"], unique = true),
+    ],
+)
+data class LostFoundMatchEntity(
+    @PrimaryKey val clientId: String,
+    val serverId: String? = null,
+    val lostReportClientId: String,
+    val foundReportClientId: String,
+    val overallScore: Double,
+    val confidence: String,
+    /** Signals serialised as JSON so the explanation survives offline. */
+    val signalsJson: String,
+    val status: String,
+    val createdAtEpochMillis: Long,
+    val reviewedBy: String? = null,
+    val reviewedAtEpochMillis: Long? = null,
+    val reviewNote: String? = null,
+    val syncState: String,
+)
+
+/**
+ * A cached QR location.
+ *
+ * Cached deliberately: a volunteer scanning a sign in a dead spot still needs the
+ * location's name and coordinates to file a report against it.
+ */
+@Entity(tableName = "qr_locations", indices = [Index(value = ["routeSequence"])])
+data class QrLocationEntity(
+    @PrimaryKey val token: String,
+    val locationName: String,
+    val description: String? = null,
+    val latitude: Double,
+    val longitude: Double,
+    val routeSegment: String? = null,
+    val routeSequence: Int? = null,
+    val locationType: String,
+    val status: String,
+    val publicPageEnabled: Boolean = true,
+    val areaId: String? = null,
+    val organisationId: String? = null,
+    val lastVerifiedAtEpochMillis: Long? = null,
+    val cachedAtEpochMillis: Long,
 )

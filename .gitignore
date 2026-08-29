@@ -57,3 +57,7 @@ supabase/storage/
 
 ui-ux-modernizer/
 ui-ux-modernizer.skill
+
+# Python face-matching service
+__pycache__/
+*.pyc

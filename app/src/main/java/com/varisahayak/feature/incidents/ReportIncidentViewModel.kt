@@ -12,7 +12,9 @@ import com.varisahayak.core.location.LocationProvider
 import com.varisahayak.core.network.ConnectivityObserver
 import com.varisahayak.domain.model.GeoPoint
 import com.varisahayak.domain.model.IncidentCategory
+import com.varisahayak.domain.repository.ClassificationRepository
 import com.varisahayak.domain.repository.IncidentRepository
+import com.varisahayak.domain.usecase.AiSuggestion
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -28,8 +30,13 @@ data class ReportIncidentUiState(
     val location: GeoPoint? = null,
     val locationState: LocationCaptureState = LocationCaptureState.Idle,
     val isSos: Boolean = false,
-    val sosBridgeToken: String? = null,
+    /** The fixed QR sign this report is filed against, when one was scanned. */
+    val qrLocationToken: String? = null,
+    val qrLocationName: String? = null,
     val isSubmitting: Boolean = false,
+    /** Null until the classifier answers, and null forever if it never does. */
+    val suggestion: AiSuggestion? = null,
+    val isSuggesting: Boolean = false,
     val error: AppError? = null,
     val isOffline: Boolean = false,
     val savedClientId: String? = null,
@@ -37,9 +44,13 @@ data class ReportIncidentUiState(
 
 enum class LocationCaptureState { Idle, Capturing, Captured, Approximate, Unavailable }
 
+/** The description must say something before it is worth asking a model about it. */
+private const val MIN_DESCRIPTION_FOR_SUGGESTION = 15
+
 @HiltViewModel
 class ReportIncidentViewModel @Inject constructor(
     private val incidentRepository: IncidentRepository,
+    private val classificationRepository: ClassificationRepository,
     private val locationProvider: LocationProvider,
     private val connectivity: ConnectivityObserver,
     savedStateHandle: SavedStateHandle,
@@ -50,7 +61,8 @@ class ReportIncidentViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(
         ReportIncidentUiState(
             isSos = route.isSos,
-            sosBridgeToken = route.sosBridgeToken,
+            qrLocationToken = route.qrLocationToken,
+            qrLocationName = route.qrLocationName,
             // An SOS Bridge request arrives with no category chosen; MEDICAL is the most
             // common reason a volunteer scans a tag, but it stays editable.
             category = if (route.isSos) IncidentCategory.MEDICAL else null,
@@ -67,7 +79,47 @@ class ReportIncidentViewModel @Inject constructor(
         _uiState.update { it.copy(category = category, error = null) }
 
     fun onDescriptionChanged(value: String) =
-        _uiState.update { it.copy(description = value, error = null) }
+        _uiState.update {
+            // A changed description invalidates any previous suggestion. Leaving a stale
+            // one on screen would attach the model's opinion of the old text to the new.
+            it.copy(description = value, error = null, suggestion = null)
+        }
+
+    /** True once there is enough text for a suggestion to be worth asking for. */
+    val canRequestSuggestion: Boolean
+        get() = _uiState.value.description.trim().length >= MIN_DESCRIPTION_FOR_SUGGESTION
+
+    /**
+     * Asks the server-side classifier for a category.
+     *
+     * Explicitly user-initiated rather than fired on every pause in typing: each call is a
+     * network round trip and a model invocation, and a volunteer on a metered connection
+     * in a field should not be spending either without asking.
+     *
+     * Nothing here can fail in a way the user sees. A null result simply leaves the
+     * suggestion row absent.
+     */
+    fun requestSuggestion() {
+        val description = _uiState.value.description
+        if (description.trim().length < MIN_DESCRIPTION_FOR_SUGGESTION) return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSuggesting = true) }
+            val suggestion = classificationRepository.suggest(
+                description = description,
+                selectedCategory = _uiState.value.category,
+            )
+            _uiState.update { it.copy(isSuggesting = false, suggestion = suggestion) }
+        }
+    }
+
+    /** Applies a suggestion the volunteer chose to accept. Always their decision. */
+    fun acceptSuggestion() {
+        val suggested = _uiState.value.suggestion?.category ?: return
+        _uiState.update { it.copy(category = suggested, suggestion = null) }
+    }
+
+    fun dismissSuggestion() = _uiState.update { it.copy(suggestion = null) }
 
     fun onAffectedPersonNoteChanged(value: String) =
         _uiState.update { it.copy(affectedPersonNote = value) }
@@ -133,7 +185,7 @@ class ReportIncidentViewModel @Inject constructor(
                 photoLocalPath = null,
                 affectedPersonNote = state.affectedPersonNote.takeIf { it.isNotBlank() },
                 isSos = state.isSos,
-                sosBridgeToken = state.sosBridgeToken,
+                sosBridgeToken = state.qrLocationToken,
             )
 
             when (result) {

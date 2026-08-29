@@ -7,11 +7,14 @@ import com.varisahayak.core.common.Outcome
 import com.varisahayak.core.location.LocationProvider
 import com.varisahayak.core.network.ConnectivityObserver
 import com.varisahayak.data.sync.SyncScheduler
+import com.varisahayak.domain.model.Capabilities
 import com.varisahayak.domain.model.GeoPoint
 import com.varisahayak.domain.model.Incident
 import com.varisahayak.domain.model.IncidentCategory
 import com.varisahayak.domain.model.IncidentStatus
 import com.varisahayak.domain.model.Profile
+import com.varisahayak.domain.model.ResponderAvailability
+import com.varisahayak.domain.model.capabilities
 import com.varisahayak.domain.repository.IncidentRepository
 import com.varisahayak.domain.repository.ProfileRepository
 import com.varisahayak.domain.repository.ResponderRepository
@@ -29,6 +32,8 @@ import javax.inject.Inject
 
 data class DashboardUiState(
     val profile: Profile? = null,
+    /** What this role may do. Denies everything until the profile resolves. */
+    val capabilities: Capabilities = Capabilities.NONE,
     val openIncidents: List<Incident> = emptyList(),
     val assignedIncidents: List<Incident> = emptyList(),
     val activeSosList: List<Incident> = emptyList(),
@@ -74,6 +79,7 @@ class DashboardViewModel @Inject constructor(
 
         DashboardUiState(
             profile = profile,
+            capabilities = profile.capabilities,
             openIncidents = openList,
             assignedIncidents = assigned,
             activeSosList = sosList,
@@ -88,6 +94,33 @@ class DashboardViewModel @Inject constructor(
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = DashboardUiState(isLoading = true),
     )
+
+    /**
+     * The signed-in responder's own shift state.
+     *
+     * Exposed separately rather than folded into [DashboardUiState] because only
+     * responders have one, and because `combine` already carries five flows — a sixth
+     * would push it onto the untyped vararg overload for a value most roles ignore.
+     */
+    val availability: StateFlow<ResponderAvailability?> =
+        responderRepository.observeOwnAvailability()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /**
+     * Publishes a shift change.
+     *
+     * Availability is what the server-side matcher filters on before it scores anybody, so
+     * a responder who is not AVAILABLE is not a candidate at all. This is the control that
+     * puts them in the pool.
+     */
+    fun setAvailability(next: ResponderAvailability) {
+        viewModelScope.launch {
+            when (val outcome = responderRepository.setAvailability(next)) {
+                is Outcome.Success -> _error.value = null
+                is Outcome.Failure -> _error.value = outcome.error
+            }
+        }
+    }
 
     fun raiseEmergencySos(note: String = "Emergency SOS raised by Volunteer") {
         viewModelScope.launch {

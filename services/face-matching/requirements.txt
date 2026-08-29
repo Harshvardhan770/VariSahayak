@@ -1,0 +1,17 @@
+# VARI Sahayak Lost & Found face-matching service.
+#
+# The dependency set is fixed by Plan 07 section 7.21A and is deliberately the same stack as
+# the reference implementation this service is adapted from. Do not substitute another
+# face-recognition library: the embeddings already persisted in the database were produced
+# by DeepFace/Facenet and are not comparable with vectors from a different model.
+
+opencv-python==4.10.0.84   # cv2: decode, grayscale, crop, augment
+deepface==0.0.93           # detection, representation, Facenet embeddings
+numpy==1.26.4              # vectors, averaging, cosine distance
+Flask==3.0.3               # HTTP layer
+Flask-Cors==4.0.1          # controlled cross-origin access for the backend
+psycopg[binary]==3.2.3     # the project's existing PostgreSQL/Supabase database
+python-dotenv==1.0.1       # DATABASE_URL and service configuration
+
+# tf-keras is required by recent DeepFace releases running against Keras 3.
+tf-keras==2.17.0

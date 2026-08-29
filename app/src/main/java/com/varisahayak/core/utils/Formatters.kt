@@ -1,6 +1,8 @@
 package com.varisahayak.core.utils
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.core.os.ConfigurationCompat
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableLongStateOf
@@ -60,7 +62,19 @@ fun formatDistance(metres: Double): String = when {
 
     metres < 10_000 -> stringResource(
         R.string.distance_kilometres,
-        String.format(Locale.getDefault(), "%.1f", metres / 1_000.0),
+        // The configuration's locale, not the process default: switching the app to
+        // Marathi must change the decimal separator on the next frame, and
+        // Locale.getDefault() is not read as a composition input so it would not.
+        String.format(
+            // ConfigurationCompat, not Configuration.getLocales(): the latter is API 24
+            // and this app ships to API 23.
+            // ROOT as the fallback, not getDefault(): the default is the process locale,
+            // which is exactly the non-observable read this line exists to avoid. An empty
+            // locale list is not a real state, so the fallback only has to be harmless.
+            ConfigurationCompat.getLocales(LocalConfiguration.current)[0] ?: Locale.ROOT,
+            "%.1f",
+            metres / 1_000.0,
+        ),
     )
 
     else -> stringResource(

@@ -1,0 +1,592 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>VARI Sahayak</title>
+
+<!--
+  The public QR landing page.
+
+  Scanned by an ordinary phone camera at a fixed sign on the Wari route. It must work for
+  somebody who has never heard of this project, has not installed anything, and may be
+  standing next to a person who needs help right now.
+
+  Three constraints shape everything here:
+
+  1. NO BUILD STEP, NO FRAMEWORK, NO EXTERNAL REQUESTS. One file, inline CSS and JS. A
+     pilgrim on a 2G connection in a field cannot wait for a bundle, and a CDN that is
+     unreachable would mean a dead sign.
+  2. NOTHING PRIVATE. This page reaches the public resolver and nothing else. No volunteer
+     dashboard, no incident lists, no Lost & Found data, no operational map — a public scan
+     must stay inside the public experience.
+  3. LARGE TARGETS, HIGH CONTRAST. Operated one-handed, in sunlight, possibly by somebody
+     distressed. Every control is at least 48px and reads without squinting.
+-->
+
+<style>
+  :root {
+    /* Deliberately light and high-contrast: this is read outdoors in direct sun, where a
+       dark theme on a cheap LCD becomes a mirror. */
+    --ink: #14181f;
+    --ink-soft: #4a5361;
+    --canvas: #f4f6f9;
+    --card: #ffffff;
+    --line: #d9dee6;
+    --brand: #b4530a;
+    --danger: #b3261e;
+    --ok: #1b5e20;
+    --radius: 14px;
+
+    /* Type scale, 1.25 ratio.
+       Four steps and no more. An earlier version of this page had nine sizes between
+       0.8rem and 1.5rem -- steps of 0.05rem, which is no hierarchy at all. On a page read
+       one-handed in sunlight by somebody who may be frightened, size is how you find the
+       thing that matters, so the steps have to be obvious at a glance. */
+    --text-fine: 0.8rem;   /* labels, hints, footer */
+    --text-base: 1rem;     /* body, buttons, inputs */
+    --text-loud: 1.25rem;  /* section headings, the SOS action */
+    --text-hero: 1.5625rem;/* where you are */
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--canvas);
+    color: var(--ink);
+    font: 17px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  main {
+    max-width: 34rem;
+    margin: 0 auto;
+    padding: 1.25rem 1rem 3rem;
+  }
+
+  header { text-align: center; padding: 1.5rem 0 0.5rem; }
+  header h1 { margin: 0; font-size: var(--text-loud); letter-spacing: -0.01em; }
+  header p { margin: 0.25rem 0 0; color: var(--ink-soft); font-size: var(--text-fine); }
+
+  .place {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 1rem 1.1rem;
+    margin: 1rem 0 1.25rem;
+  }
+  .place .label { font-size: var(--text-fine); color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.06em; }
+  .place .name { font-size: var(--text-hero); font-weight: 700; margin-top: 0.15rem; }
+  .place .meta { color: var(--ink-soft); font-size: var(--text-fine); margin-top: 0.35rem; }
+
+  .actions { display: grid; gap: 0.75rem; }
+
+  button, .btn {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    min-height: 60px;          /* well above the 48px floor: gloves, rain, panic */
+    padding: 0.9rem 1.1rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--card);
+    color: var(--ink);
+    font: inherit;
+    font-weight: 600;
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  button:focus-visible, .btn:focus-visible, input:focus-visible, select:focus-visible {
+    outline: 3px solid var(--brand);
+    outline-offset: 2px;
+  }
+
+  .btn-sos {
+    background: var(--danger);
+    border-color: var(--danger);
+    color: #fff;
+    font-size: var(--text-loud);
+  }
+
+  .glyph { font-size: var(--text-loud); line-height: 1; }
+
+  section[hidden] { display: none; }
+
+  .panel {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 1.1rem;
+    margin-top: 1rem;
+  }
+  .panel h2 { margin: 0 0 0.75rem; font-size: var(--text-loud); }
+
+  label { display: block; font-weight: 600; margin: 0.85rem 0 0.3rem; font-size: var(--text-base); }
+  .hint { font-weight: 400; color: var(--ink-soft); font-size: var(--text-fine); }
+
+  input, select, textarea {
+    width: 100%;
+    min-height: 48px;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    font: inherit;
+    background: #fff;
+    color: var(--ink);
+  }
+  textarea { min-height: 90px; resize: vertical; }
+
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+
+  .note {
+    margin-top: 0.9rem;
+    padding: 0.75rem 0.9rem;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: #fbfcfe;
+    color: var(--ink-soft);
+    font-size: var(--text-fine);
+  }
+  .note.ok { border-color: var(--ok); color: var(--ok); background: #f2f8f3; }
+  .note.bad { border-color: var(--danger); color: var(--danger); background: #fdf3f2; }
+
+  .back {
+    background: none;
+    border: none;
+    color: var(--brand);
+    font-weight: 600;
+    padding: 0.75rem 0;
+    min-height: 48px;
+    width: auto;
+  }
+
+  ul.points { list-style: none; margin: 0.5rem 0 0; padding: 0; }
+  ul.points li {
+    padding: 0.6rem 0;
+    border-top: 1px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+  ul.points li:first-child { border-top: none; }
+  .dist { color: var(--ink-soft); white-space: nowrap; }
+
+  footer { margin-top: 2rem; text-align: center; color: var(--ink-soft); font-size: var(--text-fine); }
+
+  /* Respect a reader who has asked for less motion; there is nothing here worth animating
+     through. */
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+
+<body>
+<main>
+  <header>
+    <h1>VARI Sahayak</h1>
+    <p id="tagline">Help along the Wari route</p>
+  </header>
+
+  <!-- Where the scan resolved to. Populated before any action is offered, because every
+       action below depends on knowing which sign this is. -->
+  <div class="place" id="place" hidden>
+    <div class="label">You are near</div>
+    <div class="name" id="placeName">—</div>
+    <div class="meta" id="placeMeta"></div>
+  </div>
+
+  <div class="note bad" id="fatal" hidden></div>
+
+  <!-- The four functions. One physical QR, four things it can do. -->
+  <div class="actions" id="menu" hidden>
+    <button class="btn-sos" id="goSos" type="button">
+      <span class="glyph" aria-hidden="true">!</span>
+      <span>Emergency SOS Alert</span>
+    </button>
+    <button id="goVolunteer" type="button">
+      <span class="glyph" aria-hidden="true">&#9787;</span>
+      <span>Volunteer Details</span>
+    </button>
+    <a class="btn" id="goWhatsapp" href="#" rel="noopener noreferrer" target="_blank">
+      <span class="glyph" aria-hidden="true">&#9993;</span>
+      <span>WhatsApp Channel</span>
+    </a>
+    <button id="goJourney" type="button">
+      <span class="glyph" aria-hidden="true">&#9873;</span>
+      <span>Live Tracking of My Journey</span>
+    </button>
+  </div>
+
+  <!-- SOS ------------------------------------------------------------------------- -->
+  <section class="panel" id="panelSos" hidden>
+    <h2>Emergency SOS Alert</h2>
+
+    <label for="sosType">What is the emergency?</label>
+    <select id="sosType">
+      <option value="MEDICAL">Medical / someone is unwell</option>
+      <option value="LOST_PERSON">Someone is missing</option>
+      <option value="WATER">Water needed</option>
+      <option value="CROWD_SURGE">Crowd is unsafe</option>
+      <option value="SANITATION">Sanitation</option>
+      <option value="BLOCKED_ROAD">Path is blocked</option>
+      <option value="OTHER">Something else</option>
+    </select>
+
+    <label for="sosDescription">What is happening? <span class="hint">Required</span></label>
+    <textarea id="sosDescription" maxlength="1000"
+              placeholder="An elderly man has collapsed near the water tap."></textarea>
+
+    <div class="row">
+      <div>
+        <label for="sosName">Name <span class="hint">If known</span></label>
+        <input id="sosName" type="text" autocomplete="off" />
+      </div>
+      <div>
+        <label for="sosAge">Age <span class="hint">Approx</span></label>
+        <input id="sosAge" type="number" min="0" max="120" inputmode="numeric" />
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label for="sosCount">How many people?</label>
+        <input id="sosCount" type="number" min="1" max="500" value="1" inputmode="numeric" />
+      </div>
+      <div>
+        <label for="sosPhone">Phone <span class="hint">Optional</span></label>
+        <input id="sosPhone" type="tel" autocomplete="tel" />
+      </div>
+    </div>
+
+    <!-- The sign already gives an exact coordinate. Browser GPS is an optional refinement,
+         stored separately, because the person is near the sign rather than on it. -->
+    <div class="note" id="sosGeo">
+      Your exact position will be sent if you allow it. The sign's location is sent either way.
+    </div>
+
+    <button class="btn-sos" id="sendSos" type="button" style="margin-top:1rem">
+      <span class="glyph" aria-hidden="true">!</span>
+      <span>Send alert</span>
+    </button>
+
+    <div class="note" id="sosResult" hidden></div>
+    <button class="back" data-back type="button">Back</button>
+  </section>
+
+  <!-- Volunteer details ------------------------------------------------------------ -->
+  <section class="panel" id="panelVolunteer" hidden>
+    <h2>Volunteer Details</h2>
+    <div id="volunteerBody"></div>
+    <button class="back" data-back type="button">Back</button>
+  </section>
+
+  <!-- Journey ----------------------------------------------------------------------- -->
+  <section class="panel" id="panelJourney" hidden>
+    <h2>My Journey</h2>
+
+    <!-- The two locations are labelled separately and always. A QR is a fixed reference
+         point and must never be presented as a continuous tracker. -->
+    <div class="note">
+      <strong>QR reference location</strong><br />
+      <span id="journeyQr">—</span>
+    </div>
+    <div class="note" id="journeyGps">
+      <strong>Your device location</strong><br />
+      <span id="journeyGpsText">Not shared yet.</span>
+    </div>
+
+    <button id="shareLocation" type="button">
+      <span class="glyph" aria-hidden="true">&#9678;</span>
+      <span>Show my current position</span>
+    </button>
+
+    <div id="nearbyWrap" hidden>
+      <h2 style="margin-top:1.25rem">Nearby help</h2>
+      <ul class="points" id="nearby"></ul>
+    </div>
+
+    <button class="back" data-back type="button">Back</button>
+  </section>
+
+  <footer>VARI Sahayak &middot; Public information point</footer>
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  // ---------------------------------------------------------------------------------
+  // Configuration.
+  //
+  // Replaced at deploy time. Only the anon-safe public function URL belongs here — this
+  // page holds no service key, and the resolver returns only public columns.
+  // ---------------------------------------------------------------------------------
+  var RESOLVER = (window.VARI_RESOLVER_URL || 'https://YOUR-PROJECT.supabase.co/functions/v1/resolve-location');
+
+  var el = function (id) { return document.getElementById(id); };
+  var state = { token: null, location: null, gps: null };
+
+  /**
+   * The sign's token, from either path form.
+   *
+   * Signs are printed as .../l/VARI-LOC-XXXXXXXX so an ordinary camera opens the page, but
+   * ?loc= is accepted too for links shared by hand.
+   */
+  function readToken() {
+    var params = new URLSearchParams(window.location.search);
+    var fromQuery = params.get('loc') || params.get('token');
+    if (fromQuery) return fromQuery.trim().toUpperCase();
+
+    var parts = window.location.pathname.split('/').filter(Boolean);
+    var last = parts[parts.length - 1] || '';
+    return /^VARI-LOC-/i.test(last) ? last.trim().toUpperCase() : null;
+  }
+
+  function fail(message) {
+    el('fatal').textContent = message;
+    el('fatal').hidden = false;
+    el('menu').hidden = true;
+  }
+
+  function show(panelId) {
+    ['panelSos', 'panelVolunteer', 'panelJourney'].forEach(function (id) {
+      el(id).hidden = id !== panelId;
+    });
+    el('menu').hidden = panelId !== null;
+    if (panelId) window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll('[data-back]'), function (b) {
+    b.addEventListener('click', function () { show(null); });
+  });
+
+  // ---------------------------------------------------------------------------------
+  // Resolve the sign.
+  // ---------------------------------------------------------------------------------
+  function resolve() {
+    state.token = readToken();
+
+    if (!state.token) {
+      fail('No location code was found in this link. Scan the QR code on the sign again.');
+      return;
+    }
+
+    fetch(RESOLVER + '?action=resolve&token=' + encodeURIComponent(state.token))
+      .then(function (r) { return r.json().then(function (b) { return { ok: r.ok, body: b }; }); })
+      .then(function (res) {
+        if (!res.ok || !res.body.ok || !res.body.location) {
+          // Never guess a location: an unrecognised sign says so plainly.
+          fail(res.body && res.body.message
+            ? res.body.message
+            : 'This code was not recognised.');
+          return;
+        }
+
+        state.location = res.body.location;
+        render();
+      })
+      .catch(function () {
+        fail('Could not reach VARI Sahayak. Check your connection, or find a volunteer nearby.');
+      });
+  }
+
+  function render() {
+    var loc = state.location;
+
+    el('placeName').textContent = loc.location_name;
+    el('placeMeta').textContent = [loc.description, loc.route_segment].filter(Boolean).join(' · ');
+    el('place').hidden = false;
+    el('menu').hidden = false;
+
+    el('journeyQr').textContent =
+      loc.location_name + ' (' + loc.latitude.toFixed(5) + ', ' + loc.longitude.toFixed(5) + ')';
+
+    // A channel that is not configured must degrade gracefully rather than offer a broken
+    // link into nowhere.
+    var wa = el('goWhatsapp');
+    if (loc.whatsapp_channel_url) {
+      wa.href = loc.whatsapp_channel_url;
+    } else {
+      wa.removeAttribute('href');
+      wa.setAttribute('aria-disabled', 'true');
+      wa.style.opacity = '0.55';
+      wa.addEventListener('click', function (e) {
+        e.preventDefault();
+        alert('No WhatsApp channel is set up for this point yet.');
+      });
+    }
+
+    // Only fields the resolver marked public. Nothing internal reaches this page.
+    var parts = [];
+    if (loc.help_point_name) parts.push('<p><strong>' + escapeHtml(loc.help_point_name) + '</strong></p>');
+    if (loc.contact_label && loc.contact_value) {
+      parts.push('<p>' + escapeHtml(loc.contact_label) + ': <a href="tel:' +
+        encodeURIComponent(loc.contact_value) + '">' + escapeHtml(loc.contact_value) + '</a></p>');
+    }
+    parts.push('<p class="hint">Point type: ' + escapeHtml(readableType(loc.location_type)) + '</p>');
+
+    el('volunteerBody').innerHTML = parts.length
+      ? parts.join('')
+      : '<p>No volunteer details are published for this point yet.</p>';
+  }
+
+  function readableType(t) {
+    return ({
+      CHECKPOINT: 'Route checkpoint',
+      MEDICAL_POINT: 'Medical point',
+      VOLUNTEER_POINT: 'Volunteer help point',
+      REST_AREA: 'Rest area',
+      WATER_POINT: 'Water point',
+      ROUTE_POINT: 'Route point',
+      EMERGENCY_POINT: 'Emergency point'
+    })[t] || 'Route point';
+  }
+
+  /** Everything from the server is escaped before it touches innerHTML. */
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  // ---------------------------------------------------------------------------------
+  // Location, always optional.
+  // ---------------------------------------------------------------------------------
+  function requestPosition(onDone) {
+    if (!navigator.geolocation) { onDone(null); return; }
+
+    navigator.geolocation.getCurrentPosition(
+      function (pos) {
+        state.gps = {
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+          accuracy_m: pos.coords.accuracy
+        };
+        onDone(state.gps);
+      },
+      // A refusal or a timeout is not a failure: the sign's coordinate is already known
+      // and is enough to send help.
+      function () { onDone(null); },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 }
+    );
+  }
+
+  // ---------------------------------------------------------------------------------
+  // Actions.
+  // ---------------------------------------------------------------------------------
+  el('goSos').addEventListener('click', function () {
+    show('panelSos');
+    requestPosition(function (gps) {
+      el('sosGeo').textContent = gps
+        ? 'Your position will be sent with the alert.'
+        : 'Position not shared. The sign’s location will still be sent.';
+    });
+  });
+
+  el('goVolunteer').addEventListener('click', function () { show('panelVolunteer'); });
+
+  el('goJourney').addEventListener('click', function () { show('panelJourney'); });
+
+  el('shareLocation').addEventListener('click', function () {
+    el('journeyGpsText').textContent = 'Finding your position…';
+    requestPosition(function (gps) {
+      if (!gps) {
+        el('journeyGpsText').textContent =
+          'Position not available. The QR reference location above still applies.';
+        return;
+      }
+      el('journeyGpsText').textContent =
+        gps.latitude.toFixed(5) + ', ' + gps.longitude.toFixed(5) +
+        ' (±' + Math.round(gps.accuracy_m) + ' m)';
+      loadNearby(gps);
+    });
+  });
+
+  function loadNearby(gps) {
+    fetch(RESOLVER + '?action=nearby&lat=' + gps.latitude + '&lng=' + gps.longitude)
+      .then(function (r) { return r.json(); })
+      .then(function (body) {
+        var points = (body && body.points) || [];
+        if (!points.length) return;
+
+        el('nearby').innerHTML = points.map(function (p) {
+          var metres = Math.round(p.distance_metres);
+          var pretty = metres < 1000 ? metres + ' m' : (metres / 1000).toFixed(1) + ' km';
+          return '<li><span>' + escapeHtml(p.location_name) + '<br><span class="hint">' +
+            escapeHtml(readableType(p.location_type)) + '</span></span>' +
+            '<span class="dist">' + pretty + '</span></li>';
+        }).join('');
+
+        el('nearbyWrap').hidden = false;
+      })
+      .catch(function () { /* Nearby points are a convenience; silence is correct here. */ });
+  }
+
+  el('sendSos').addEventListener('click', function () {
+    var description = el('sosDescription').value.trim();
+    var result = el('sosResult');
+
+    if (!description) {
+      result.hidden = false;
+      result.className = 'note bad';
+      result.textContent = 'Please describe what is happening.';
+      return;
+    }
+
+    var button = el('sendSos');
+    button.disabled = true;
+    result.hidden = false;
+    result.className = 'note';
+    result.textContent = 'Sending…';
+
+    var payload = {
+      token: state.token,
+      emergency_type: el('sosType').value,
+      description: description,
+      person_name: el('sosName').value.trim() || null,
+      approximate_age: Number(el('sosAge').value) || null,
+      people_count: Number(el('sosCount').value) || 1,
+      phone: el('sosPhone').value.trim() || null
+    };
+
+    if (state.gps) {
+      payload.latitude = state.gps.latitude;
+      payload.longitude = state.gps.longitude;
+      payload.accuracy_m = state.gps.accuracy_m;
+    }
+
+    fetch(RESOLVER + '?action=sos', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+      .then(function (r) { return r.json().then(function (b) { return { ok: r.ok, body: b }; }); })
+      .then(function (res) {
+        if (res.ok && res.body.ok) {
+          result.className = 'note ok';
+          result.textContent = res.body.message;
+          // Left disabled after success: a distressed person tapping twice would file two
+          // incidents for the same emergency and send two responders.
+          button.textContent = 'Alert sent';
+          return;
+        }
+        throw new Error('rejected');
+      })
+      .catch(function () {
+        result.className = 'note bad';
+        // Never a dead end. If the network failed, the next instruction is a person.
+        result.textContent =
+          'Could not send the alert. Please find a volunteer at this point, or try again.';
+        button.disabled = false;
+      });
+  });
+
+  resolve();
+})();
+</script>
+</body>
+</html>

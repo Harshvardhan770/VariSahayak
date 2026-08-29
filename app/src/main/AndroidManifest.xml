@@ -60,8 +60,6 @@
             android:name="com.google.mlkit.vision.DEPENDENCIES"
             android:value="barcode" />
 
-        <!-- Missing components removed to prevent crashes -->
-        <!--
         <service
             android:name=".feature.notifications.VariSahayakMessagingService"
             android:exported="false">
@@ -70,6 +68,18 @@
             </intent-filter>
         </service>
 
+        <!-- Default channel and icon for any push that arrives without them. SOS is the
+             safe default: under-alerting on an emergency is worse than over-alerting on
+             a status change. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_notification" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="@string/notification_channel_id_sos" />
+
+        <!-- Re-arms the sync queue after a reboot, so an incident captured offline before
+             the phone died is still delivered. -->
         <receiver
             android:name=".data.sync.BootCompletedReceiver"
             android:enabled="true"
@@ -79,7 +89,6 @@
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
-        -->
 
         <!-- Hilt supplies the WorkerFactory; the default initializer must be removed. -->
         <provider

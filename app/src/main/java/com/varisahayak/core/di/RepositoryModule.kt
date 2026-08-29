@@ -1,16 +1,20 @@
 package com.varisahayak.core.di
 
 import com.varisahayak.data.repository.AuthRepositoryImpl
+import com.varisahayak.data.repository.ClassificationRepositoryImpl
+import com.varisahayak.data.repository.DeviceTokenRepositoryImpl
 import com.varisahayak.data.repository.IncidentRepositoryImpl
 import com.varisahayak.data.repository.LostFoundRepositoryImpl
 import com.varisahayak.data.repository.ProfileRepositoryImpl
-import com.varisahayak.data.repository.QrRepositoryImpl
+import com.varisahayak.data.repository.QrLocationRepositoryImpl
 import com.varisahayak.data.repository.ResponderRepositoryImpl
 import com.varisahayak.domain.repository.AuthRepository
+import com.varisahayak.domain.repository.ClassificationRepository
+import com.varisahayak.domain.repository.DeviceTokenRepository
 import com.varisahayak.domain.repository.IncidentRepository
 import com.varisahayak.domain.repository.LostFoundRepository
 import com.varisahayak.domain.repository.ProfileRepository
-import com.varisahayak.domain.repository.QrRepository
+import com.varisahayak.domain.repository.QrLocationRepository
 import com.varisahayak.domain.repository.ResponderRepository
 import dagger.Binds
 import dagger.Module
@@ -36,9 +40,9 @@ abstract class RepositoryModule {
 
     @Binds
     @Singleton
-    abstract fun bindQrRepository(
-        impl: QrRepositoryImpl
-    ): QrRepository
+    abstract fun bindQrLocationRepository(
+        impl: QrLocationRepositoryImpl
+    ): QrLocationRepository
 
     @Binds
     @Singleton
@@ -57,4 +61,16 @@ abstract class RepositoryModule {
     abstract fun bindResponderRepository(
         impl: ResponderRepositoryImpl
     ): ResponderRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindDeviceTokenRepository(
+        impl: DeviceTokenRepositoryImpl
+    ): DeviceTokenRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindClassificationRepository(
+        impl: ClassificationRepositoryImpl
+    ): ClassificationRepository
 }
