@@ -56,6 +56,8 @@ import com.varisahayak.core.permissions.AppPermissions
 import com.varisahayak.core.walkie.WalkieUiState
 import com.varisahayak.domain.model.UserRole
 import com.varisahayak.domain.repository.AuthState
+import com.varisahayak.feature.auth.BulkRegistrationScreen
+import com.varisahayak.feature.auth.BulkRegistrationViewModel
 import com.varisahayak.feature.auth.ForgotPasswordScreen
 import com.varisahayak.feature.auth.SignInScreen
 import com.varisahayak.feature.auth.SignInViewModel
@@ -537,6 +539,17 @@ private fun VariNavHost(
                         popUpTo(0) { inclusive = true }
                     }
                 },
+                onNavigateToBulkRegistration = {
+                    navController.navigate(Destination.BulkRegistration)
+                }
+            )
+        }
+
+        composable<Destination.BulkRegistration> {
+            val bulkViewModel: BulkRegistrationViewModel = hiltViewModel()
+            BulkRegistrationScreen(
+                viewModel = bulkViewModel,
+                onNavigateBack = { navController.popBackStack() }
             )
         }
     }

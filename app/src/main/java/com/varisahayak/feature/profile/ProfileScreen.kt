@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Stars
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -48,6 +49,7 @@ import com.varisahayak.core.designsystem.component.VariPrimaryButton
 fun ProfileScreen(
     viewModel: ProfileViewModel,
     onSignOut: () -> Unit,
+    onNavigateToBulkRegistration: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -234,6 +236,43 @@ fun ProfileScreen(
                     label = stringResource(R.string.profile_environment),
                     value = if (com.varisahayak.BuildConfig.DEBUG) "Development" else "Production",
                 )
+            }
+        }
+
+        if (profile?.role?.isCommand == true) {
+            // Management Section
+            Card(
+                shape = RoundedCornerShape(Dimens.CornerMd),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(Dimens.SpaceMd),
+                    verticalArrangement = Arrangement.spacedBy(Dimens.SpaceSm),
+                ) {
+                    Text(
+                        text = "Management",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+
+                    HorizontalDivider()
+
+                    VariPrimaryButton(
+                        text = "Bulk Registration",
+                        onClick = onNavigateToBulkRegistration,
+                        icon = Icons.Filled.PersonAdd,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    
+                    Text(
+                        text = "Import multiple responders or volunteers via Excel sheet.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
 

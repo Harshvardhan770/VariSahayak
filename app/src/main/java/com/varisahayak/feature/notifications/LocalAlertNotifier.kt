@@ -14,6 +14,7 @@ import com.varisahayak.R
 import com.varisahayak.app.MainActivity
 import com.varisahayak.domain.model.Incident
 import com.varisahayak.domain.repository.IncidentRepository
+import com.varisahayak.domain.usecase.AlertTemplateGenerator
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -47,6 +48,7 @@ import javax.inject.Singleton
 class LocalAlertNotifier @Inject constructor(
     @ApplicationContext private val context: Context,
     private val incidentRepository: IncidentRepository,
+    private val templateGenerator: AlertTemplateGenerator,
 ) {
 
     private val scope = CoroutineScope(SupervisorJob())
@@ -89,17 +91,20 @@ class LocalAlertNotifier @Inject constructor(
             return
         }
 
+        val alert = templateGenerator.generate(incident, System.currentTimeMillis())
+
         val notification = NotificationCompat.Builder(
             context,
             context.getString(R.string.notification_channel_id_sos),
         )
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(context.getString(R.string.notification_sos_title))
-            .setContentText(context.getString(R.string.notification_sos_body))
+            .setContentTitle(alert.title)
+            .setContentText(alert.body)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setAutoCancel(true)
             .setContentIntent(openIntent(incident))
+            .setStyle(NotificationCompat.BigTextStyle().bigText(alert.body))
             .build()
 
         try {

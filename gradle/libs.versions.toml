@@ -9,7 +9,7 @@ kotlin = "2.3.21"          # NOT 2.4.x — KSP 2.3.11 targets Kotlin 2.3 (contra
 ksp = "2.3.11"
 compileSdk = "37"
 targetSdk = "36"
-minSdk = "23"
+minSdk = "26"
 desugarJdkLibs = "2.1.5"   # required at minSdk 23 for supabase-kt (contract §0.3)
 
 # --- androidx ---
@@ -38,6 +38,9 @@ crashlyticsPlugin = "3.0.8"
 # --- supabase / ktor ---
 supabase = "3.8.0"
 ktor = "3.5.1"
+
+# --- excel ---
+poi = "5.4.0"
 
 # --- kotlinx ---
 coroutines = "1.11.0"
@@ -136,6 +139,9 @@ supabase-functions = { module = "io.github.jan-tennert.supabase:functions-kt" }
 # --- ktor: OkHttp engine is mandatory. ktor-client-android has no WebSocket support
 # and Realtime fails at runtime with it (contract §0.5).
 ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
+
+# --- excel ---
+poi-ooxml = { module = "org.apache.poi:poi-ooxml", version.ref = "poi" }
 
 # --- kotlinx ---
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }

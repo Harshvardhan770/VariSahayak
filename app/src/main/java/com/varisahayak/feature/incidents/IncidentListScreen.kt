@@ -15,6 +15,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.varisahayak.core.designsystem.Dimens
 import com.varisahayak.core.designsystem.component.EmptyState
 import com.varisahayak.core.designsystem.component.IncidentCard
+import com.varisahayak.core.designsystem.component.IncidentQuickActions
 import com.varisahayak.core.designsystem.component.ShimmerLoadingState
 import com.varisahayak.core.designsystem.component.OfflineQueuePill
 import com.varisahayak.core.utils.rememberNowMillis
@@ -71,6 +72,9 @@ fun IncidentListScreen(
                         incident = incident,
                         nowMillis = nowMillis,
                         onClick = { onIncidentSelected(incident.clientId) },
+                        actions = IncidentQuickActions(
+                            onViewMap = { onIncidentSelected(incident.clientId) }
+                        )
                     )
                 }
             }

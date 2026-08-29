@@ -366,13 +366,57 @@
     <string name="admin_incident_mix">घटना वितरण</string>
     <string name="admin_total">कुल</string>
     <string name="admin_operational_alerts">परिचालन अलर्ट</string>
-    <string name="admin_alert_failed_sync">%1$d रिपोर्ट सिंक नहीं हो सकीं</string>
-    <string name="admin_alert_failed_sync_detail">वे डिवाइस पर सुरक्षित हैं और पुनः प्रयास होगा।</string>
-    <string name="admin_alert_unassigned">%1$d खुली घटनाओं का कोई उत्तरदाता नहीं</string>
-    <string name="admin_alert_unassigned_detail">मिलान में कोई उपलब्ध नहीं मिला।</string>
     <string name="admin_alert_critical">%1$d गंभीर घटनाएँ खुली हैं</string>
     <string name="admin_alert_critical_detail">इसमें हर सक्रिय SOS शामिल है।</string>
     <string name="admin_all_clear">अभी किसी बात पर ध्यान देने की ज़रूरत नहीं</string>
+
+    <!-- Professional Alert Templates (Hindi) -->
+    <string name="alert_tpl_medical_title">चिकित्सा आपातकाल</string>
+    <string name="alert_tpl_medical_body">%1$s के पास तत्काल चिकित्सा सहायता की आवश्यकता है। रिपोर्ट किया गया: %2$s। प्रभावित व्यक्ति: %3$s। निकटतम चिकित्सा उत्तरदाता को सूचित कर दिया गया है। कार्रवाई: स्थान पर जाएं और स्थिति का आकलन करें।</string>
+    <string name="alert_tpl_lost_person_title">गुमशुदा व्यक्ति अलर्ट</string>
+    <string name="alert_tpl_lost_person_body">%1$s के पास एक व्यक्ति के लापता होने की सूचना मिली है। विवरण: %2$s। अंतिम बार देखा गया: %3$s। कार्रवाई: पास के स्वयंसेवकों और पुलिस इकाइयों से आसपास के क्षेत्र की जांच करने का अनुरोध किया जाता है।</string>
+    <string name="alert_tpl_found_person_title">पाया गया व्यक्ति अलर्ट</string>
+    <string name="alert_tpl_found_person_body">%1$s के पास एक व्यक्ति मिला है। विवरण: %2$s। कार्रवाई: पास के स्वयंसेवकों और समन्वयकों से पहचान में सहायता करने का अनुरोध किया जाता है।</string>
+    <string name="alert_tpl_missing_child_title">लापता बच्चा - गंभीर</string>
+    <string name="alert_tpl_missing_child_body">%1$s के पास एक बच्चे के लापता होने की सूचना मिली है। विवरण: %2$s। कार्रवाई: तत्काल खोज आवश्यक। सभी पास के कर्मचारी अपने तत्काल आसपास के क्षेत्र की जांच करें।</string>
+    <string name="alert_tpl_crowd_surge_title">भीड़ सुरक्षा अलर्ट</string>
+    <string name="alert_tpl_crowd_surge_body">%1$s के पास उच्च भीड़ घनत्व की सूचना मिली है। वर्तमान स्थिति: %2$s। कार्रवाई: क्षेत्र में पुलिस/स्वयंसेवकों से आंदोलन की निगरानी करने और आगे भीड़ को रोकने का अनुरोध किया जाता है।</string>
+    <string name="alert_tpl_road_blockage_title">मार्ग अवरोध</string>
+    <string name="alert_tpl_road_blockage_body">%1$s के पास आवाजाही बाधित है। कारण: %2$s। कार्रवाई: मार्ग कर्मियों से अनुरोध है कि वे अवरोध का आकलन करें और निकासी का समन्वय करें।</string>
+    <string name="alert_tpl_water_shortage_title">पानी की कमी</string>
+    <string name="alert_tpl_water_shortage_body">%1$s पर पानी की कमी की सूचना मिली है। कार्रवाई: रसद टीम से आपूर्ति पुनःपूर्ति का समन्वय करने का अनुरोध किया गया है।</string>
+    <string name="alert_tpl_food_shortage_title">आपूर्ति की कमी</string>
+    <string name="alert_tpl_food_shortage_body">%1$s पर भोजन/आपूर्ति की कमी की सूचना मिली है। कार्रवाई: पुनःपूर्ति के लिए पास के एनजीओ के साथ समन्वय किया जा रहा है।</string>
+    <string name="alert_tpl_sanitation_title">स्वच्छता का मुद्दा</string>
+    <string name="alert_tpl_sanitation_body">%1$s के पास स्वच्छता के मुद्दे की सूचना मिली है। कार्रवाई: सफाई दल को स्थान पर भेज दिया गया है।</string>
+    <string name="alert_tpl_volunteer_assist_title">सहायता आवश्यक</string>
+    <string name="alert_tpl_volunteer_assist_body">%1$s पर %2$s के लिए अतिरिक्त स्वयंसेवकों की आवश्यकता है। कार्रवाई: क्षेत्र में उपलब्ध स्वयंसेवक कृपया समन्वयक को रिपोर्ट करें।</string>
+    <string name="alert_tpl_fire_hazard_title">आग/सुरक्षा खतरा</string>
+    <string name="alert_tpl_fire_hazard_body">%1$s के पास संभावित सुरक्षा खतरे की सूचना मिली है। कार्रवाई: आपातकालीन प्रतिक्रिया का अनुरोध किया गया। तीर्थयात्रियों को क्षेत्र से दूर रखें।</string>
+    <string name="alert_tpl_security_title">सुरक्षा घटना</string>
+    <string name="alert_tpl_security_body">%1$s पर सुरक्षा घटना की सूचना मिली है। कार्रवाई: पुलिस इकाइयां मूल्यांकन के लिए स्थान पर जाएं।</string>
+    <string name="alert_tpl_infrastructure_title">बुनियादी ढांचे का मुद्दा</string>
+    <string name="alert_tpl_infrastructure_body">%1$s पर बुनियादी ढांचे के नुकसान/मुद्दे की सूचना मिली है। कार्रवाई: रखरखाव टीम को सूचित किया गया।</string>
+    <string name="alert_tpl_general_title">सामान्य घटना</string>
+    <string name="alert_tpl_general_body">%1$s पर घटना की सूचना मिली है। विवरण: %2$s। कार्रवाई: संबंधित कर्मियों से मूल्यांकन करने का अनुरोध किया जाता है।</string>
+    <string name="alert_tpl_sos_critical_title">गंभीर SOS</string>
+    <string name="alert_tpl_sos_critical_body">%1$s पर तत्काल सहायता की आवश्यकता है। घटना: %2$s। रिपोर्ट किया गया: %3$s। कार्रवाई आवश्यक: निकटतम उपलब्ध उत्तरदाता तुरंत आगे बढ़ें और इस अलर्ट को स्वीकार करें।</string>
+
+    <string name="alert_unknown_location">अज्ञात स्थान</string>
+    <string name="alert_approx_location">अनुमानित स्थान</string>
+    <string name="alert_reported_by">%1$s द्वारा रिपोर्ट किया गया</string>
+    <string name="alert_id">ID: %1$s</string>
+
+    <!-- Quick Actions (Hindi) -->
+    <string name="action_acknowledge">स्वीकार करें</string>
+    <string name="action_accept_respond">प्रतिक्रिया दें</string>
+    <string name="action_view_location">मैप देखें</string>
+    <string name="action_contact_reporter">रिपोर्टर से संपर्क करें</string>
+    <string name="action_escalate">आगे बढ़ाएं</string>
+    <string name="action_mark_resolved">हल चिह्नित करें</string>
+    <string name="action_en_route">रास्ते में</string>
+    <string name="action_on_scene">मौके पर</string>
+    <string name="action_reassign">पुनः असाइन करें</string>
 
     <!-- ============ police ============ -->
     <string name="police_patrol_tasks">गश्ती कार्य</string>

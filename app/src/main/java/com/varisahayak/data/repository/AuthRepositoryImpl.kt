@@ -7,6 +7,9 @@ import com.varisahayak.core.network.ConnectivityObserver
 import com.varisahayak.domain.model.UserRole
 import com.varisahayak.domain.repository.AuthRepository
 import com.varisahayak.domain.repository.AuthState
+import com.varisahayak.domain.repository.BulkSignUpResult
+import com.varisahayak.domain.repository.BulkUserFailure
+import com.varisahayak.domain.repository.BulkUserRequest
 import com.varisahayak.domain.repository.SignUpResult
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
@@ -19,6 +22,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import java.io.IOException
+import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -122,6 +126,65 @@ class AuthRepositoryImpl @Inject constructor(
             Outcome.Failure(error.toAuthError())
         }
     }
+
+    override suspend fun bulkSignUp(users: List<BulkUserRequest>): BulkSignUpResult =
+        withContext(dispatchers.io) {
+            val created = mutableListOf<BulkUserRequest>()
+            val failed = mutableListOf<BulkUserFailure>()
+
+            for (req in users) {
+                // Initial validation
+                val validation = validateSignUp(
+                    req.email,
+                    "dummy_password", // Placeholder for validation check
+                    req.displayName,
+                    req.role,
+                    req.organisationName
+                )
+                
+                if (validation != null) {
+                    val errorMsg = if (validation is AppError.Validation) {
+                        // In bulk mode, we ignore password length errors because we generate them ourselves.
+                        if (validation.message == MSG_PASSWORD_TOO_SHORT) null else validation.message
+                    } else {
+                        "Invalid data"
+                    }
+                    
+                    if (errorMsg != null) {
+                        failed.add(BulkUserFailure(req, errorMsg))
+                        continue
+                    }
+                }
+
+                try {
+                    // Generate a strong random password for bulk creation.
+                    // Users will need to use Forgot Password or receive a link if enabled.
+                    val tempPassword = UUID.randomUUID().toString()
+                    
+                    supabase.auth.signUpWith(Email) {
+                        this.email = req.email.trim()
+                        this.password = tempPassword
+                        data = buildJsonObject {
+                            put("display_name", req.displayName.trim())
+                            put("role", req.role.wireName)
+                            req.organisationName?.trim()?.takeIf { it.isNotEmpty() }?.let {
+                                put("organisation_name", it)
+                            }
+                            req.phone?.trim()?.takeIf { it.isNotEmpty() }?.let {
+                                put("phone", it)
+                            }
+                        }
+                    }
+                    created.add(req)
+                } catch (e: Exception) {
+                    val error = e.toAuthError()
+                    val reason = if (error is AppError.Validation) error.message else "System error"
+                    failed.add(BulkUserFailure(req, reason))
+                }
+            }
+
+            BulkSignUpResult(created, failed)
+        }
 
     override suspend fun signOut(): Outcome<Unit> = withContext(dispatchers.io) {
         try {

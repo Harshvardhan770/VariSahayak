@@ -43,6 +43,7 @@ import com.varisahayak.core.designsystem.component.DonutLegend
 import com.varisahayak.core.designsystem.component.DonutSlice
 import com.varisahayak.core.designsystem.component.IconPlate
 import com.varisahayak.core.designsystem.component.IncidentCard
+import com.varisahayak.core.designsystem.component.IncidentQuickActions
 import com.varisahayak.core.designsystem.component.ShimmerLoadingState
 import com.varisahayak.core.designsystem.component.NotConnectedPanel
 import com.varisahayak.core.designsystem.component.OperationalCard
@@ -52,6 +53,7 @@ import com.varisahayak.core.designsystem.component.TrendLineChart
 import com.varisahayak.core.designsystem.component.labelRes
 import com.varisahayak.core.utils.rememberNowMillis
 import com.varisahayak.domain.model.Incident
+import com.varisahayak.domain.model.IncidentStatus
 import com.varisahayak.domain.usecase.HotspotCalculator
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -213,6 +215,15 @@ fun CommandDashboardScreen(
                     myLocation = uiState.myLocation,
                     assigneeInitials = incident.assigneeId?.take(2),
                     onClick = { actions.onDetail(incident.clientId) },
+                    actions = IncidentQuickActions(
+                        onAcknowledge = if (incident.status == IncidentStatus.REPORTED) {
+                            { viewModel.updateStatus(incident.clientId, IncidentStatus.TRIAGED) }
+                        } else null,
+                        onResolve = if (incident.status.isOpen) {
+                            { viewModel.updateStatus(incident.clientId, IncidentStatus.RESOLVED) }
+                        } else null,
+                        onViewMap = { actions.onDetail(incident.clientId) }
+                    )
                 )
             }
         }

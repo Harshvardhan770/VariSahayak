@@ -213,6 +213,9 @@ dependencies {
     // OkHttp engine, not ktor-client-android: Realtime needs WebSocket support.
     implementation(libs.ktor.client.okhttp)
 
+    // --- excel ---
+    implementation(libs.poi.ooxml)
+
     // --- kotlinx ---
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.coroutines.play.services)
