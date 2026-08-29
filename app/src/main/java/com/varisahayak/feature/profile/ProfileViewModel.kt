@@ -5,11 +5,13 @@ import androidx.lifecycle.viewModelScope
 import com.varisahayak.core.common.AppError
 import com.varisahayak.core.common.Outcome
 import com.varisahayak.domain.model.Profile
+import com.varisahayak.domain.model.RewardProfile
 import com.varisahayak.domain.repository.AuthRepository
 import com.varisahayak.domain.repository.AuthState
 import com.varisahayak.domain.repository.DeviceTokenRepository
 import com.varisahayak.domain.repository.IncidentRepository
 import com.varisahayak.domain.repository.ProfileRepository
+import com.varisahayak.domain.repository.RewardRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,6 +28,7 @@ import javax.inject.Inject
 
 data class ProfileUiState(
     val profile: Profile? = null,
+    val rewardProfile: RewardProfile? = null,
     val unsyncedCount: Int = 0,
     val reportedCount: Int = 0,
     val resolvedCount: Int = 0,
@@ -37,6 +40,7 @@ data class ProfileUiState(
 class ProfileViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val profileRepository: ProfileRepository,
+    private val rewardRepository: RewardRepository,
     private val incidentRepository: IncidentRepository,
     private val deviceTokenRepository: DeviceTokenRepository,
 ) : ViewModel() {
@@ -51,6 +55,7 @@ class ProfileViewModel @Inject constructor(
     @OptIn(ExperimentalCoroutinesApi::class)
     val uiState: StateFlow<ProfileUiState> = combine(
         profileRepository.observeCurrentProfile(),
+        rewardRepository.observeRewardProfile(),
         incidentRepository.observeUnsyncedCount(),
         _isLoading,
         _error,
@@ -64,9 +69,17 @@ class ProfileViewModel @Inject constructor(
                 flowOf(0 to 0)
             }
         },
-    ) { profile, unsynced, isLoading, error, stats ->
+    ) { args: Array<Any?> ->
+        val profile = args[0] as? Profile
+        val rewardProfile = args[1] as? RewardProfile
+        val unsynced = args[2] as Int
+        val isLoading = args[3] as Boolean
+        val error = args[4] as? AppError
+        val stats = args[5] as Pair<Int, Int>
+
         ProfileUiState(
             profile = profile,
+            rewardProfile = rewardProfile,
             unsyncedCount = unsynced,
             reportedCount = stats.first,
             resolvedCount = stats.second,

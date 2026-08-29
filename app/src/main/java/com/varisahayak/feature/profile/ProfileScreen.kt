@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import com.varisahayak.R
 import com.varisahayak.core.designsystem.Dimens
 import com.varisahayak.core.designsystem.VariTheme
+import com.varisahayak.core.designsystem.component.RewardSummaryCard
 import com.varisahayak.core.designsystem.component.ShimmerLoadingState
 import com.varisahayak.core.designsystem.component.RoleBadge
 import com.varisahayak.core.designsystem.component.VariPrimaryButton
@@ -119,49 +120,9 @@ fun ProfileScreen(
             }
         }
 
-        // Impact & Activity Card
-        Card(
-            shape = RoundedCornerShape(Dimens.CornerMd),
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(Dimens.SpaceMd),
-                verticalArrangement = Arrangement.spacedBy(Dimens.SpaceSm),
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceSm)
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Stars,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(Dimens.IconSm)
-                    )
-                    Text(
-                        text = stringResource(R.string.profile_impact),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                }
-
-                HorizontalDivider()
-
-                ProfileItemRow(
-                    label = stringResource(R.string.profile_reported),
-                    value = uiState.reportedCount.toString(),
-                )
-
-                if (profile?.role?.isResponder == true || profile?.role?.isCommand == true) {
-                    ProfileItemRow(
-                        label = stringResource(R.string.profile_resolved),
-                        value = uiState.resolvedCount.toString(),
-                    )
-                }
-            }
+        // Rewards Section
+        uiState.rewardProfile?.let { rewardProfile ->
+            RewardSummaryCard(profile = rewardProfile)
         }
 
         // Details Section
