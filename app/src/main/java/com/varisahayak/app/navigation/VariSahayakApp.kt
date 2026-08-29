@@ -22,6 +22,8 @@ import com.varisahayak.app.MainViewModel
 import com.varisahayak.domain.repository.AuthState
 import com.varisahayak.feature.auth.SignInScreen
 import com.varisahayak.feature.auth.SignInViewModel
+import com.varisahayak.feature.auth.SignUpScreen
+import com.varisahayak.feature.auth.SignUpViewModel
 import com.varisahayak.feature.lostfound.LostFoundScreen
 import com.varisahayak.feature.map.IncidentMapScreen
 import com.varisahayak.feature.qr.QrScannerScreen
@@ -81,7 +83,25 @@ fun VariSahayakApp(
             }
             composable<Destination.SignIn> {
                 val signInViewModel: SignInViewModel = hiltViewModel()
-                SignInScreen(viewModel = signInViewModel)
+                SignInScreen(
+                    viewModel = signInViewModel,
+                    onNavigateToSignUp = { navController.navigate(Destination.SignUp) }
+                )
+            }
+            composable<Destination.SignUp> {
+                val signUpViewModel: SignUpViewModel = hiltViewModel()
+                SignUpScreen(
+                    viewModel = signUpViewModel,
+                    onNavigateBack = { navController.popBackStack() },
+                    onSignUpSuccess = {
+                        // After signup, Supabase might auto-sign-in, or we might need to navigate to sign-in.
+                        // Given our AuthState observation in LaunchedEffect, if it auto-signs-in, 
+                        // it will navigate to Home. If not, we can manually go to SignIn.
+                        navController.navigate(Destination.SignIn) {
+                            popUpTo(Destination.SignUp) { inclusive = true }
+                        }
+                    }
+                )
             }
             composable<Destination.VolunteerDashboard> {
                 PlaceholderScreen(title = stringResource(R.string.nav_dashboard) + " (Volunteer)")

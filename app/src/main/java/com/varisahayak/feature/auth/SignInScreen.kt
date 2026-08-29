@@ -14,6 +14,7 @@ import com.varisahayak.core.common.AppError
 @Composable
 fun SignInScreen(
     viewModel: SignInViewModel,
+    onNavigateToSignUp: () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -83,13 +84,19 @@ fun SignInScreen(
                 is AppError.Validation -> error.message
                 is AppError.Unauthorised -> stringResource(R.string.auth_error_invalid_credentials)
                 is AppError.Offline -> stringResource(R.string.auth_error_offline)
-                else -> stringResource(R.string.state_error)
+                else -> error.cause?.message ?: stringResource(R.string.state_error)
             }
             Text(
                 text = errorMessage,
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodySmall
             )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        TextButton(onClick = onNavigateToSignUp) {
+            Text(text = stringResource(R.string.auth_no_account))
         }
     }
 }

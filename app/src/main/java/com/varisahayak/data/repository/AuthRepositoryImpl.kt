@@ -12,6 +12,9 @@ import io.github.jan.supabase.auth.status.SessionStatus
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import android.util.Log
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -42,12 +45,31 @@ class AuthRepositoryImpl @Inject constructor(
                 }
                 Outcome.Success(Unit)
             } catch (e: Exception) {
+                Log.e("AuthRepository", "Sign in failed", e)
                 val error = when {
                     e.message?.contains("Invalid login credentials", ignoreCase = true) == true ->
                         AppError.Unauthorised(e)
                     else -> AppError.Network(cause = e)
                 }
                 Outcome.Failure(error)
+            }
+        }
+
+    override suspend fun signUp(email: String, password: String, displayName: String, role: com.varisahayak.domain.model.UserRole): Outcome<Unit> =
+        withContext(dispatchers.io) {
+            try {
+                supabase.auth.signUpWith(Email) {
+                    this.email = email
+                    this.password = password
+                    data = buildJsonObject {
+                        put("display_name", displayName)
+                        put("role", role.wireName)
+                    }
+                }
+                Outcome.Success(Unit)
+            } catch (e: Exception) {
+                Log.e("AuthRepository", "Sign up failed", e)
+                Outcome.Failure(AppError.Network(cause = e))
             }
         }
 
