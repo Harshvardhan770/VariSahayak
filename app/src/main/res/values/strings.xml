@@ -149,6 +149,20 @@
     <!-- Notification permission -->
     <string name="permission_notifications_rationale">Notifications alert you to new assignments and emergencies. Without them you will need to open the app to see new work.</string>
 
+    <!-- Map -->
+    <string name="map_title">Incident map</string>
+    <string name="map_offline">Map tiles need a connection</string>
+    <string name="map_offline_detail">Your incidents are still listed and fully usable.</string>
+    <string name="map_recenter">Recentre on me</string>
+    <string name="map_enable_location">Turn on location</string>
+    <string name="map_grant_location">Allow location</string>
+    <string name="map_location_unavailable">Could not get your location just now.</string>
+    <string name="map_hotspot_incidents">%1$d incidents</string>
+    <string name="map_legend">Shape and colour both show priority</string>
+    <string name="cd_map_my_location">Your position</string>
+    <string name="cd_map_recenter">Recentre the map on your position</string>
+    <string name="cd_map_hotspot">%1$d incidents, highest priority %2$s</string>
+
     <!-- QR / SOS Bridge -->
     <string name="qr_scan_title">Scan QR identifier</string>
     <string name="qr_scan_hint">Point the camera at the pilgrim\'s QR tag</string>
@@ -210,4 +224,9 @@
     <string name="cd_add_photo">Add a photograph</string>
     <string name="cd_torch_on">Turn torch on</string>
     <string name="cd_torch_off">Turn torch off</string>
+    <string name="qr_contains_personal_data">This tag holds personal details and cannot be used. Report it to an organiser.</string>
+    <string name="sos_bridge_creating">Creating help request…</string>
+    <string name="sos_bridge_created">Help request created.</string>
+    <string name="sos_bridge_subject">Tag reference: %1$s</string>
+    <string name="sos_bridge_active_incident">This person already has an open request.</string>
 </resources>
