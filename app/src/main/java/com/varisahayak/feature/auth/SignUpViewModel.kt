@@ -5,8 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.varisahayak.core.common.AppError
 import com.varisahayak.core.common.Outcome
 import com.varisahayak.domain.repository.AuthRepository
-import com.varisahayak.core.common.onFailure
-import com.varisahayak.core.common.onSuccess
+import com.varisahayak.domain.repository.SignUpResult
 import com.varisahayak.domain.model.UserRole
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,6 +23,8 @@ data class SignUpUiState(
     val error: AppError? = null,
     val isLoading: Boolean = false,
     val isSuccess: Boolean = false,
+    /** Set when the account exists but the email link has not been clicked yet. */
+    val confirmationEmail: String? = null,
 )
 
 @HiltViewModel
@@ -56,21 +57,31 @@ class SignUpViewModel @Inject constructor(
         val displayName = _uiState.value.displayName
         val role = _uiState.value.selectedRole
 
-        if (email.isBlank() || password.isBlank() || displayName.isBlank()) {
-            _uiState.update { it.copy(error = AppError.Validation(message = "All fields are required")) }
-            return
-        }
-
+        // Field-level validation lives in the repository so the sign-in, sign-up, and
+        // reset flows all reject the same inputs with the same wording.
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
 
-            authRepository.signUp(email, password, displayName, role)
-                .onSuccess {
-                    _uiState.update { it.copy(isLoading = false, isSuccess = true) }
+            when (val result = authRepository.signUp(email, password, displayName, role)) {
+                is Outcome.Success -> _uiState.update {
+                    when (val signUp = result.data) {
+                        SignUpResult.SignedIn ->
+                            it.copy(isLoading = false, isSuccess = true)
+
+                        is SignUpResult.ConfirmationRequired -> it.copy(
+                            isLoading = false,
+                            isSuccess = true,
+                            confirmationEmail = signUp.email,
+                        )
+                    }
                 }
-                .onFailure { error ->
-                    _uiState.update { it.copy(isLoading = false, error = error) }
+
+                is Outcome.Failure -> _uiState.update {
+                    it.copy(isLoading = false, error = result.error)
                 }
+            }
         }
     }
+
+    fun dismissError() = _uiState.update { it.copy(error = null) }
 }

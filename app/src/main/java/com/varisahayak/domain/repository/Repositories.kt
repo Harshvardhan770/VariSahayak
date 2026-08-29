@@ -41,9 +41,36 @@ interface AuthRepository {
 
     suspend fun signIn(email: String, password: String): Outcome<Unit>
 
-    suspend fun signUp(email: String, password: String, displayName: String, role: com.varisahayak.domain.model.UserRole): Outcome<Unit>
+    /**
+     * Creates an account.
+     *
+     * [role] is what the sign-up form offered, but it is NOT sent to the server. The
+     * database trigger always assigns VOLUNTEER — a client-supplied role would be a
+     * privilege-escalation hole. Elevated roles come from the administrator flow.
+     */
+    suspend fun signUp(
+        email: String,
+        password: String,
+        displayName: String,
+        role: com.varisahayak.domain.model.UserRole,
+    ): Outcome<SignUpResult>
 
     suspend fun signOut(): Outcome<Unit>
+
+    /** Sends a password-reset email. Succeeds silently for unknown addresses. */
+    suspend fun sendPasswordReset(email: String): Outcome<Unit>
+}
+
+/**
+ * Whether the new account is usable immediately.
+ *
+ * With email confirmation enabled Supabase creates the user but issues no session, so the
+ * UI must say "check your inbox" rather than sending the user to a login that cannot yet
+ * succeed.
+ */
+sealed interface SignUpResult {
+    data object SignedIn : SignUpResult
+    data class ConfirmationRequired(val email: String) : SignUpResult
 }
 
 interface ProfileRepository {
