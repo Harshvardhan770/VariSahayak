@@ -1,26 +1,33 @@
 # --- Gradle & Build ---
 .gradle/
 build/
-app/build/
+**/build/
 .kotlin/
 *.main.kts
+*.log
+*.hprof
 
 # --- Android ---
-/captures
+captures/
 *.apk
+*.aar
+*.bundle
 *.ap_
 *.dex
 *.class
 bin/
 gen/
 .externalNativeBuild
-.cxx
+.cxx/
+.navigation/
 
 # --- IDEs ---
 .idea/
 *.iml
 .DS_Store
 .vscode/
+Thumbs.db
+desktop.ini
 
 # --- Secrets & Keys ---
 # Written by Android Studio; holds sdk.dir, not secrets.
