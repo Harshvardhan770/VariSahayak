@@ -8,6 +8,10 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -57,6 +61,7 @@ import com.varisahayak.feature.auth.SignInScreen
 import com.varisahayak.feature.auth.SignInViewModel
 import com.varisahayak.feature.auth.SignUpScreen
 import com.varisahayak.feature.auth.SignUpViewModel
+import com.varisahayak.feature.communication.CommunicationScreen
 import com.varisahayak.feature.dashboard.CommandDashboardScreen
 import com.varisahayak.feature.dashboard.DashboardActions
 import com.varisahayak.feature.dashboard.ResponderDashboardScreen
@@ -305,6 +310,7 @@ private fun String?.titleRes(): Int = when {
     contains("ReportIncident") -> R.string.report_title
     contains("QrScanner") -> R.string.qr_scan_title
     contains("LostAndFound") -> R.string.lostfound_title
+    contains("Communication") -> R.string.comms_title
     contains("Profile") -> R.string.profile_title
     contains("CommandDashboard") || contains("AdminDashboard") -> R.string.command_title
     contains("Dashboard") -> R.string.nav_dashboard
@@ -337,6 +343,30 @@ private fun VariNavHost(
         navController = navController,
         startDestination = Destination.Splash,
         modifier = modifier,
+        enterTransition = {
+            fadeIn(animationSpec = tween(400)) + slideIntoContainer(
+                AnimatedContentTransitionScope.SlideDirection.Start,
+                animationSpec = tween(400)
+            )
+        },
+        exitTransition = {
+            fadeOut(animationSpec = tween(400)) + slideOutOfContainer(
+                AnimatedContentTransitionScope.SlideDirection.Start,
+                animationSpec = tween(400)
+            )
+        },
+        popEnterTransition = {
+            fadeIn(animationSpec = tween(400)) + slideIntoContainer(
+                AnimatedContentTransitionScope.SlideDirection.End,
+                animationSpec = tween(400)
+            )
+        },
+        popExitTransition = {
+            fadeOut(animationSpec = tween(400)) + slideOutOfContainer(
+                AnimatedContentTransitionScope.SlideDirection.End,
+                animationSpec = tween(400)
+            )
+        }
     ) {
         composable<Destination.Splash> {
             SplashScreen()
@@ -456,6 +486,10 @@ private fun VariNavHost(
             LostFoundScreen(
                 onOpenMatches = { navController.navigate(Destination.MatchReview) },
             )
+        }
+
+        composable<Destination.Communication> {
+            CommunicationScreen()
         }
 
         composable<Destination.MatchReview> {

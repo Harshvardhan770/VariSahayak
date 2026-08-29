@@ -77,6 +77,9 @@ sealed interface Destination {
     data object Documentation : Destination
 
     @Serializable
+    data object Communication : Destination
+
+    @Serializable
     data class Conversation(val channelId: String) : Destination
 
     @Serializable

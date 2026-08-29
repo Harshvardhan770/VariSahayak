@@ -21,7 +21,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.varisahayak.R
 import com.varisahayak.core.common.AppError
 import com.varisahayak.core.designsystem.Dimens
-import com.varisahayak.core.designsystem.component.LoadingState
+import com.varisahayak.core.designsystem.component.ShimmerLoadingState
 import com.varisahayak.core.designsystem.component.PriorityBadge
 import com.varisahayak.core.designsystem.component.StatusChip
 import com.varisahayak.core.designsystem.component.SyncBadge
@@ -43,7 +43,7 @@ fun IncidentDetailScreen(
 
     val current = incident
     if (current == null) {
-        LoadingState(modifier = modifier)
+        ShimmerLoadingState(modifier = modifier)
         return
     }
 

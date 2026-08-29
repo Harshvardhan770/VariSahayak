@@ -145,6 +145,9 @@
     <string name="map_location_unavailable">अभी आपका स्थान नहीं मिल सका।</string>
     <string name="map_hotspot_incidents">%1$d घटनाएँ</string>
     <string name="map_legend">आकार और रंग दोनों प्राथमिकता दर्शाते हैं</string>
+    <string name="map_show_palkhi">पालखी मार्ग दिखाएं</string>
+    <string name="map_hide_palkhi">पालखी मार्ग छुपाएं</string>
+    <string name="map_palkhi_tracking">पालखी ट्रैकिंग</string>
     <string name="cd_map_my_location">आपकी स्थिति</string>
     <string name="cd_map_recenter">मानचित्र को अपनी स्थिति पर केंद्रित करें</string>
     <string name="cd_map_hotspot">%1$d घटनाएँ, उच्चतम प्राथमिकता %2$s</string>

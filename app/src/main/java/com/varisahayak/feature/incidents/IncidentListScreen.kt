@@ -15,7 +15,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.varisahayak.core.designsystem.Dimens
 import com.varisahayak.core.designsystem.component.EmptyState
 import com.varisahayak.core.designsystem.component.IncidentCard
-import com.varisahayak.core.designsystem.component.LoadingState
+import com.varisahayak.core.designsystem.component.ShimmerLoadingState
 import com.varisahayak.core.designsystem.component.OfflineQueuePill
 import com.varisahayak.core.utils.rememberNowMillis
 
@@ -52,7 +52,7 @@ fun IncidentListScreen(
         }
 
         when {
-            uiState.isLoading -> LoadingState()
+            uiState.isLoading -> ShimmerLoadingState()
 
             uiState.incidents.isEmpty() -> EmptyState()
 

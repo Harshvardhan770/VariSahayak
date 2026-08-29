@@ -53,7 +53,7 @@ import com.varisahayak.core.designsystem.component.DonutLegend
 import com.varisahayak.core.designsystem.component.DonutSlice
 import com.varisahayak.core.designsystem.component.IncidentCard
 import com.varisahayak.core.designsystem.component.IncidentRow
-import com.varisahayak.core.designsystem.component.LoadingState
+import com.varisahayak.core.designsystem.component.ShimmerLoadingState
 import com.varisahayak.core.designsystem.component.NotConnectedPanel
 import com.varisahayak.core.designsystem.component.OperationalCard
 import com.varisahayak.core.designsystem.component.SectionHeader
@@ -95,7 +95,7 @@ fun ResponderDashboardScreen(
     LaunchedEffect(Unit) { viewModel.refreshMyLocation() }
 
     if (uiState.isLoading && uiState.profile == null) {
-        LoadingState(modifier = modifier)
+        ShimmerLoadingState(modifier = modifier)
         return
     }
 
