@@ -4,9 +4,13 @@ import androidx.hilt.work.HiltWrapper_WorkerFactoryModule;
 import com.varisahayak.core.di.CoreBindsModule;
 import com.varisahayak.core.di.CoreProvidesModule;
 import com.varisahayak.core.di.DatabaseModule;
+import com.varisahayak.core.di.LocationModule;
 import com.varisahayak.core.di.RepositoryModule;
 import com.varisahayak.core.di.SupabaseModule;
 import com.varisahayak.feature.auth.SignInViewModel_HiltModules;
+import com.varisahayak.feature.lostfound.LostFoundViewModel_HiltModules;
+import com.varisahayak.feature.map.IncidentMapViewModel_HiltModules;
+import com.varisahayak.feature.qr.QrScannerViewModel_HiltModules;
 import dagger.Binds;
 import dagger.Component;
 import dagger.Module;
@@ -137,6 +141,7 @@ public final class VariSahayakApplication_HiltComponents {
           DatabaseModule.class,
           HiltWrapper_FragmentGetContextFix_FragmentGetContextFixModule.class,
           HiltWrapper_WorkerFactoryModule.class,
+          LocationModule.class,
           RepositoryModule.class,
           SupabaseModule.class,
           ActivityRetainedCBuilderModule.class,
@@ -166,7 +171,10 @@ public final class VariSahayakApplication_HiltComponents {
       modules = {
           HiltWrapper_ActivityRetainedComponentManager_LifecycleModule.class,
           HiltWrapper_ActivitySavedStateHandleModule.class,
+          IncidentMapViewModel_HiltModules.KeyModule.class,
+          LostFoundViewModel_HiltModules.KeyModule.class,
           MainViewModel_HiltModules.KeyModule.class,
+          QrScannerViewModel_HiltModules.KeyModule.class,
           SignInViewModel_HiltModules.KeyModule.class,
           ActivityCBuilderModule.class,
           ViewModelCBuilderModule.class
@@ -206,7 +214,10 @@ public final class VariSahayakApplication_HiltComponents {
   @Subcomponent(
       modules = {
           HiltWrapper_HiltViewModelFactory_ViewModelModule.class,
+          IncidentMapViewModel_HiltModules.BindsModule.class,
+          LostFoundViewModel_HiltModules.BindsModule.class,
           MainViewModel_HiltModules.BindsModule.class,
+          QrScannerViewModel_HiltModules.BindsModule.class,
           SignInViewModel_HiltModules.BindsModule.class
       }
   )

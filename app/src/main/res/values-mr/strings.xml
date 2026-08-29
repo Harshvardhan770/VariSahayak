@@ -195,4 +195,9 @@
     <string name="cd_add_photo">फोटो जोडा</string>
     <string name="cd_torch_on">टॉर्च चालू करा</string>
     <string name="cd_torch_off">टॉर्च बंद करा</string>
+    <string name="qr_contains_personal_data">या टॅगमध्ये वैयक्तिक माहिती आहे, तो वापरता येणार नाही. आयोजकांना कळवा.</string>
+    <string name="sos_bridge_creating">मदत विनंती तयार होत आहे…</string>
+    <string name="sos_bridge_created">मदत विनंती तयार झाली.</string>
+    <string name="sos_bridge_subject">टॅग संदर्भ: %1$s</string>
+    <string name="sos_bridge_active_incident">या व्यक्तीची आधीच एक उघडी विनंती आहे.</string>
 </resources>

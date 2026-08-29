@@ -35,6 +35,9 @@ string category_water
 string cd_add_photo
 string cd_back
 string cd_incident_marker
+string cd_map_hotspot
+string cd_map_my_location
+string cd_map_recenter
 string cd_priority_badge
 string cd_sync_badge
 string cd_torch_off
@@ -81,6 +84,15 @@ string lostfound_last_seen
 string lostfound_report
 string lostfound_search
 string lostfound_title
+string map_enable_location
+string map_grant_location
+string map_hotspot_incidents
+string map_legend
+string map_location_unavailable
+string map_offline
+string map_offline_detail
+string map_recenter
+string map_title
 string nav_dashboard
 string nav_incidents
 string nav_map
@@ -114,6 +126,7 @@ string profile_area
 string profile_language
 string profile_organisation
 string profile_title
+string qr_contains_personal_data
 string qr_manual_entry
 string qr_manual_entry_hint
 string qr_not_recognised
@@ -143,7 +156,11 @@ string role_ngo
 string role_organiser
 string role_police
 string role_volunteer
+string sos_bridge_active_incident
 string sos_bridge_create
+string sos_bridge_created
+string sos_bridge_creating
+string sos_bridge_subject
 string sos_bridge_subtitle
 string sos_bridge_title
 string sos_confirm_message

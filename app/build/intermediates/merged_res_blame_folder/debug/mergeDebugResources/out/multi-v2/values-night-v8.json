@@ -4,7 +4,7 @@
             "outputFile": "com.varisahayak.app-mergeDebugResources-79:/values-night-v8/values-night-v8.xml",
             "map": [
                 {
-                    "source": "C:\\Users\\victus\\.gradle\\caches\\9.7.1\\transforms\\0c0c60088104694e9021f79cc213833e\\transformed\\appcompat-1.7.1\\res\\values-night-v8\\values-night-v8.xml",
+                    "source": "C:\\Users\\advbh\\.gradle\\caches\\9.7.1\\transforms\\0c0c60088104694e9021f79cc213833e\\transformed\\appcompat-1.7.1\\res\\values-night-v8\\values-night-v8.xml",
                     "from": {
                         "startLines": "2,3,4,5,6,7,8,9",
                         "startColumns": "4,4,4,4,4,4,4,4",
@@ -21,7 +21,7 @@
                     }
                 },
                 {
-                    "source": "C:\\Users\\victus\\Documents\\Hackathons\\VariSahayak\\app\\src\\main\\res\\values-night\\colors.xml",
+                    "source": "D:\\VARITHON\\HACKATHON BUILD\\VariSahayak\\app\\src\\main\\res\\values-night\\colors.xml",
                     "from": {
                         "startLines": "2",
                         "startColumns": "4",

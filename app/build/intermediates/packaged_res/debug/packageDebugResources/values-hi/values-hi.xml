@@ -30,6 +30,9 @@
     <string name="cd_add_photo">फ़ोटो जोड़ें</string>
     <string name="cd_back">वापस जाएँ</string>
     <string name="cd_incident_marker">%1$s घटना, प्राथमिकता %2$s</string>
+    <string name="cd_map_hotspot">%1$d घटनाएँ, उच्चतम प्राथमिकता %2$s</string>
+    <string name="cd_map_my_location">आपकी स्थिति</string>
+    <string name="cd_map_recenter">मानचित्र को अपनी स्थिति पर केंद्रित करें</string>
     <string name="cd_priority_badge">प्राथमिकता: %1$s</string>
     <string name="cd_sync_badge">सिंक स्थिति: %1$s</string>
     <string name="cd_torch_off">टॉर्च बंद करें</string>
@@ -76,6 +79,15 @@
     <string name="lostfound_report">लापता व्यक्ति या वस्तु दर्ज करें</string>
     <string name="lostfound_search">रिपोर्ट खोजें</string>
     <string name="lostfound_title">खोया एवं पाया</string>
+    <string name="map_enable_location">स्थान चालू करें</string>
+    <string name="map_grant_location">स्थान की अनुमति दें</string>
+    <string name="map_hotspot_incidents">%1$d घटनाएँ</string>
+    <string name="map_legend">आकार और रंग दोनों प्राथमिकता दर्शाते हैं</string>
+    <string name="map_location_unavailable">अभी आपका स्थान नहीं मिल सका।</string>
+    <string name="map_offline">मानचित्र के लिए कनेक्शन आवश्यक है</string>
+    <string name="map_offline_detail">आपकी घटनाएँ सूची में उपलब्ध और पूर्णतः उपयोग योग्य हैं।</string>
+    <string name="map_recenter">मुझ पर केंद्रित करें</string>
+    <string name="map_title">घटना मानचित्र</string>
     <string name="nav_dashboard">होम</string>
     <string name="nav_incidents">घटनाएँ</string>
     <string name="nav_map">नक्शा</string>
@@ -104,6 +116,7 @@
     <string name="profile_language">भाषा</string>
     <string name="profile_organisation">संगठन</string>
     <string name="profile_title">प्रोफ़ाइल</string>
+    <string name="qr_contains_personal_data">इस टैग में निजी जानकारी है, इसका उपयोग नहीं किया जा सकता। आयोजक को सूचित करें।</string>
     <string name="qr_manual_entry">कोड हाथ से दर्ज करें</string>
     <string name="qr_manual_entry_hint">पहचानकर्ता कोड</string>
     <string name="qr_not_recognised">यह कोड पहचाना नहीं गया।</string>
@@ -133,7 +146,11 @@
     <string name="role_organiser">आयोजक</string>
     <string name="role_police">पुलिस प्रतिसादकर्ता</string>
     <string name="role_volunteer">स्वयंसेवक</string>
+    <string name="sos_bridge_active_incident">इस व्यक्ति का पहले से एक खुला अनुरोध है।</string>
     <string name="sos_bridge_create">सहायता अनुरोध बनाएँ</string>
+    <string name="sos_bridge_created">सहायता अनुरोध बन गया।</string>
+    <string name="sos_bridge_creating">सहायता अनुरोध बनाया जा रहा है…</string>
+    <string name="sos_bridge_subject">टैग संदर्भ: %1$s</string>
     <string name="sos_bridge_subtitle">बिना फ़ोन वाले वारकरी के लिए सहायता</string>
     <string name="sos_bridge_title">SOS ब्रिज</string>
     <string name="sos_confirm_message">इससे तुरंत एक गंभीर अलर्ट जाएगा।</string>

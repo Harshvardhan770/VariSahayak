@@ -13,7 +13,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -22,7 +22,9 @@ import com.varisahayak.app.MainViewModel
 import com.varisahayak.domain.repository.AuthState
 import com.varisahayak.feature.auth.SignInScreen
 import com.varisahayak.feature.auth.SignInViewModel
+import com.varisahayak.feature.lostfound.LostFoundScreen
 import com.varisahayak.feature.map.IncidentMapScreen
+import com.varisahayak.feature.qr.QrScannerScreen
 
 /**
  * Main application entry point for Compose.
@@ -109,7 +111,26 @@ fun VariSahayakApp(
                 )
             }
             composable<Destination.QrScanner> {
-                PlaceholderScreen(title = stringResource(R.string.nav_scan))
+                QrScannerScreen(
+                    onTokenAccepted = { token ->
+                        // The SOS Bridge reuses the ordinary reporting flow, carrying the
+                        // opaque token. There is no separate SOS Bridge pipeline.
+                        navController.navigate(
+                            Destination.ReportIncident(
+                                sosBridgeToken = token.value,
+                                isSos = true,
+                            ),
+                        )
+                    },
+                )
+            }
+            composable<Destination.LostAndFound> {
+                LostFoundScreen()
+            }
+            // Placeholder until Phase 4 builds the reporting screen. Must stay registered:
+            // the QR scanner routes here after a token is accepted.
+            composable<Destination.ReportIncident> {
+                PlaceholderScreen(title = stringResource(R.string.report_title))
             }
             composable<Destination.Profile> {
                 PlaceholderScreen(title = stringResource(R.string.nav_profile))

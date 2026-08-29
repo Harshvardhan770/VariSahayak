@@ -67,7 +67,6 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:testOnly="true"
         android:theme="@style/Theme.VariSahayak"
         android:usesCleartextTraffic="false" >
         <activity
@@ -85,7 +84,7 @@
 
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyAxHcXhu9Z659mzBtQdbm2UJfUO3TLQtS0" />
+            android:value="" />
 
         <!--
              Bundled ML Kit barcode model: no first-use download, so the scanner works

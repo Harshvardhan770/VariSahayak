@@ -224,4 +224,9 @@
     <string name="cd_add_photo">Add a photograph</string>
     <string name="cd_torch_on">Turn torch on</string>
     <string name="cd_torch_off">Turn torch off</string>
+    <string name="qr_contains_personal_data">This tag holds personal details and cannot be used. Report it to an organiser.</string>
+    <string name="sos_bridge_creating">Creating help request…</string>
+    <string name="sos_bridge_created">Help request created.</string>
+    <string name="sos_bridge_subject">Tag reference: %1$s</string>
+    <string name="sos_bridge_active_incident">This person already has an open request.</string>
 </resources>

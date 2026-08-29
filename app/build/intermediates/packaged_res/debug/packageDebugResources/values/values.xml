@@ -32,6 +32,9 @@
     <string name="cd_add_photo">Add a photograph</string>
     <string name="cd_back">Navigate back</string>
     <string name="cd_incident_marker">%1$s incident, priority %2$s</string>
+    <string name="cd_map_hotspot">%1$d incidents, highest priority %2$s</string>
+    <string name="cd_map_my_location">Your position</string>
+    <string name="cd_map_recenter">Recentre the map on your position</string>
     <string name="cd_priority_badge">Priority: %1$s</string>
     <string name="cd_sync_badge">Sync status: %1$s</string>
     <string name="cd_torch_off">Turn torch off</string>
@@ -78,6 +81,15 @@
     <string name="lostfound_report">Report lost person or item</string>
     <string name="lostfound_search">Search reports</string>
     <string name="lostfound_title">Lost &amp; Found</string>
+    <string name="map_enable_location">Turn on location</string>
+    <string name="map_grant_location">Allow location</string>
+    <string name="map_hotspot_incidents">%1$d incidents</string>
+    <string name="map_legend">Shape and colour both show priority</string>
+    <string name="map_location_unavailable">Could not get your location just now.</string>
+    <string name="map_offline">Map tiles need a connection</string>
+    <string name="map_offline_detail">Your incidents are still listed and fully usable.</string>
+    <string name="map_recenter">Recentre on me</string>
+    <string name="map_title">Incident map</string>
     <string name="nav_dashboard">Home</string>
     <string name="nav_incidents">Incidents</string>
     <string name="nav_map">Map</string>
@@ -111,6 +123,7 @@
     <string name="profile_language">Language</string>
     <string name="profile_organisation">Organisation</string>
     <string name="profile_title">Profile</string>
+    <string name="qr_contains_personal_data">This tag holds personal details and cannot be used. Report it to an organiser.</string>
     <string name="qr_manual_entry">Enter code by hand</string>
     <string name="qr_manual_entry_hint">Identifier code</string>
     <string name="qr_not_recognised">This code is not recognised.</string>
@@ -140,7 +153,11 @@
     <string name="role_organiser">Organiser</string>
     <string name="role_police">Police responder</string>
     <string name="role_volunteer">Volunteer</string>
+    <string name="sos_bridge_active_incident">This person already has an open request.</string>
     <string name="sos_bridge_create">Create help request</string>
+    <string name="sos_bridge_created">Help request created.</string>
+    <string name="sos_bridge_creating">Creating help request…</string>
+    <string name="sos_bridge_subject">Tag reference: %1$s</string>
     <string name="sos_bridge_subtitle">Get help for a pilgrim without a phone</string>
     <string name="sos_bridge_title">SOS Bridge</string>
     <string name="sos_confirm_message">This raises a critical alert immediately.</string>

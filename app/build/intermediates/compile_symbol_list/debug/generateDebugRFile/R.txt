@@ -33,6 +33,9 @@ int string category_water 0x0
 int string cd_add_photo 0x0
 int string cd_back 0x0
 int string cd_incident_marker 0x0
+int string cd_map_hotspot 0x0
+int string cd_map_my_location 0x0
+int string cd_map_recenter 0x0
 int string cd_priority_badge 0x0
 int string cd_sync_badge 0x0
 int string cd_torch_off 0x0
@@ -79,6 +82,15 @@ int string lostfound_last_seen 0x0
 int string lostfound_report 0x0
 int string lostfound_search 0x0
 int string lostfound_title 0x0
+int string map_enable_location 0x0
+int string map_grant_location 0x0
+int string map_hotspot_incidents 0x0
+int string map_legend 0x0
+int string map_location_unavailable 0x0
+int string map_offline 0x0
+int string map_offline_detail 0x0
+int string map_recenter 0x0
+int string map_title 0x0
 int string nav_dashboard 0x0
 int string nav_incidents 0x0
 int string nav_map 0x0
@@ -112,6 +124,7 @@ int string profile_area 0x0
 int string profile_language 0x0
 int string profile_organisation 0x0
 int string profile_title 0x0
+int string qr_contains_personal_data 0x0
 int string qr_manual_entry 0x0
 int string qr_manual_entry_hint 0x0
 int string qr_not_recognised 0x0
@@ -141,7 +154,11 @@ int string role_ngo 0x0
 int string role_organiser 0x0
 int string role_police 0x0
 int string role_volunteer 0x0
+int string sos_bridge_active_incident 0x0
 int string sos_bridge_create 0x0
+int string sos_bridge_created 0x0
+int string sos_bridge_creating 0x0
+int string sos_bridge_subject 0x0
 int string sos_bridge_subtitle 0x0
 int string sos_bridge_title 0x0
 int string sos_confirm_message 0x0

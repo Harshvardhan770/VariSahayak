@@ -12,7 +12,7 @@ public final class BuildConfig {
   // Field from default config.
   public static final boolean HAS_FIREBASE = false;
   // Field from default config.
-  public static final String SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1jZnlhZ3pub2F1amllaG1jeWp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc5NjYwODMsImV4cCI6MjEwMzU0MjA4M30.ogGA3RgcAE38duEQZ136MZKBfeCkdaIdbTpq0OB5yYI";
+  public static final String SUPABASE_ANON_KEY = "";
   // Field from default config.
-  public static final String SUPABASE_URL = "https://mcfyagznoaujiehmcyju.supabase.co";
+  public static final String SUPABASE_URL = "";
 }
