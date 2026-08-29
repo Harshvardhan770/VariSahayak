@@ -204,4 +204,10 @@
     <string name="sos_bridge_created">सहायता अनुरोध बन गया।</string>
     <string name="sos_bridge_subject">टैग संदर्भ: %1$s</string>
     <string name="sos_bridge_active_incident">इस व्यक्ति का पहले से एक खुला अनुरोध है।</string>
+    <string name="auth_forgot_password">पासवर्ड भूल गए?</string>
+    <string name="auth_reset_title">पासवर्ड रीसेट करें</string>
+    <string name="auth_reset_explain">अपना ईमेल दर्ज करें, हम रीसेट लिंक भेजेंगे।</string>
+    <string name="auth_reset_send">रीसेट लिंक भेजें</string>
+    <string name="auth_reset_sent">यदि उस पते पर खाता है, तो रीसेट लिंक भेज दिया गया है।</string>
+    <string name="auth_signup_confirm_email">खाता बन गया। %1$s पर पुष्टि लिंक देखें, फिर साइन इन करें।</string>
 </resources>

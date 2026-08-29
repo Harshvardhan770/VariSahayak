@@ -143,3 +143,37 @@ fun IncidentEntity.toUpsertDto(reportedAtIso: String): IncidentUpsertDto = Incid
     areaId = areaId,
     organisationId = organisationId,
 )
+
+/**
+ * Maps a server row into the local store.
+ *
+ * Timestamps are parsed defensively: a malformed or absent value falls back to [fetchedAt]
+ * rather than throwing, because one unparseable row must not abort the whole refresh and
+ * strand every other incident.
+ */
+fun IncidentDto.toEntity(fetchedAt: Long): IncidentEntity = IncidentEntity(
+    clientId = clientId,
+    serverId = id,
+    category = category,
+    description = description,
+    latitude = latitude,
+    longitude = longitude,
+    locationAccuracyMeters = locationAccuracyMeters,
+    locationIsApproximate = locationIsApproximate,
+    reporterId = reporterId,
+    reportedAtEpochMillis = reportedAt.toEpochMillisOr(fetchedAt),
+    photoRemotePath = photoPath,
+    affectedPersonNote = affectedPersonNote,
+    status = status,
+    priority = priority,
+    syncState = "SYNCED",
+    isSos = isSos,
+    sosBridgeToken = sosBridgeToken,
+    assigneeId = assigneeId,
+    areaId = areaId,
+    organisationId = organisationId,
+    updatedAtEpochMillis = updatedAt.toEpochMillisOr(fetchedAt),
+)
+
+private fun String?.toEpochMillisOr(fallback: Long): Long =
+    this?.let { runCatching { java.time.Instant.parse(it).toEpochMilli() }.getOrNull() } ?: fallback

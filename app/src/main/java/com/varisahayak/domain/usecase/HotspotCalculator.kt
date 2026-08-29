@@ -7,7 +7,6 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.abs
 import kotlin.math.cos
-import kotlin.math.floor
 
 /**
  * Groups incidents into geographic clusters for the map and the command dashboard.
@@ -16,40 +15,63 @@ import kotlin.math.floor
  * fully unit-testable without a device, and the same output feeds the organiser's hotspot
  * view, which is not a map at all.
  *
- * The grid is a plain equirectangular approximation. Over the scale of a pilgrimage route
- * — tens of kilometres, far from the poles — the distortion is irrelevant, and it avoids
- * dragging a geospatial library in for a bucketing operation.
+ * Distance uses a plain equirectangular approximation. Over the scale of a pilgrimage
+ * route — tens of kilometres, far from the poles — the distortion is irrelevant, and it
+ * avoids dragging in a geospatial library to compare two nearby points.
  */
 @Singleton
 class HotspotCalculator @Inject constructor() {
 
     /**
-     * Buckets incidents into cells of roughly [cellSizeMeters] and returns them ordered by
-     * severity: highest priority first, then by count. Incidents with no location are
-     * excluded from clustering but are never dropped from the underlying list — a report
-     * without coordinates is still a real report.
+     * Groups incidents that fall within [radiusMeters] of each other and returns the
+     * groups ordered by severity: highest priority first, then by count.
+     *
+     * Deliberately greedy agglomeration rather than grid bucketing. A fixed grid produces
+     * an arbitrary artefact — two incidents thirty metres apart render as separate pins
+     * whenever a cell boundary happens to fall between them, which is precisely the
+     * overlapping-pin mess clustering exists to prevent. Proximity should decide grouping,
+     * not where the grid lines land.
+     *
+     * O(n²), which is fine for the number of open incidents a map ever shows at once.
+     *
+     * Incidents with no location are excluded from clustering but are never dropped from
+     * the underlying list — a report without coordinates is still a real report.
      */
     fun cluster(
         incidents: List<Incident>,
-        cellSizeMeters: Double = DEFAULT_CELL_SIZE_METRES,
+        radiusMeters: Double = DEFAULT_CLUSTER_RADIUS_METRES,
     ): List<Hotspot> {
         val located = incidents.filter { it.location != null }
         if (located.isEmpty()) return emptyList()
 
-        val latStep = cellSizeMeters / METRES_PER_DEGREE_LATITUDE
+        // Seed from the most severe incidents first, so a critical one anchors its cluster
+        // rather than being absorbed into a neighbouring group of routine reports. clientId
+        // breaks ties, which keeps the output stable across recompositions.
+        val ordered = located.sortedWith(
+            compareByDescending<Incident> { it.priority.rank }.thenBy { it.clientId },
+        )
 
-        return located
-            .groupBy { incident ->
-                val point = incident.location!!
-                // Longitude degrees shrink toward the poles; scale the step by cos(lat) so
-                // cells stay roughly square instead of stretching east-west.
-                val lonStep = latStep / cos(Math.toRadians(point.latitude)).coerceAtLeast(MIN_COS)
-                CellKey(
-                    latIndex = floor(point.latitude / latStep).toInt(),
-                    lonIndex = floor(point.longitude / lonStep).toInt(),
-                )
+        val unassigned = ordered.toMutableList()
+        val clusters = mutableListOf<List<Incident>>()
+
+        while (unassigned.isNotEmpty()) {
+            val seed = unassigned.removeAt(0)
+            val seedPoint = seed.location!!
+
+            val members = mutableListOf(seed)
+            val iterator = unassigned.iterator()
+            while (iterator.hasNext()) {
+                val candidate = iterator.next()
+                if (seedPoint.isWithin(radiusMeters, candidate.location!!)) {
+                    members += candidate
+                    iterator.remove()
+                }
             }
-            .map { (_, cellIncidents) -> cellIncidents.toHotspot() }
+            clusters += members
+        }
+
+        return clusters
+            .map { it.toHotspot() }
             .sortedWith(
                 compareByDescending<Hotspot> { it.highestPriority.rank }
                     .thenByDescending { it.incidentCount },
@@ -72,20 +94,13 @@ class HotspotCalculator @Inject constructor() {
         )
     }
 
-    private data class CellKey(val latIndex: Int, val lonIndex: Int)
-
     companion object {
         /**
          * Roughly a city block. Small enough that a cluster still means "over there",
          * large enough that a dense stretch of route does not become an unreadable pile of
          * overlapping pins.
          */
-        const val DEFAULT_CELL_SIZE_METRES = 150.0
-
-        private const val METRES_PER_DEGREE_LATITUDE = 111_320.0
-
-        /** Guards against a division blow-up at the poles. Irrelevant in practice here. */
-        private const val MIN_COS = 0.01
+        const val DEFAULT_CLUSTER_RADIUS_METRES = 150.0
     }
 }
 

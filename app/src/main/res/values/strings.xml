@@ -236,4 +236,10 @@
     <string name="sos_bridge_created">Help request created.</string>
     <string name="sos_bridge_subject">Tag reference: %1$s</string>
     <string name="sos_bridge_active_incident">This person already has an open request.</string>
+    <string name="auth_forgot_password">Forgot password?</string>
+    <string name="auth_reset_title">Reset your password</string>
+    <string name="auth_reset_explain">Enter your email and we will send you a reset link.</string>
+    <string name="auth_reset_send">Send reset link</string>
+    <string name="auth_reset_sent">If an account exists for that address, a reset link is on its way.</string>
+    <string name="auth_signup_confirm_email">Account created. Check %1$s for a confirmation link, then sign in.</string>
 </resources>

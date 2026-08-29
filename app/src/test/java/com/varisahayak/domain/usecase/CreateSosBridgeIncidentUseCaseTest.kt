@@ -51,7 +51,7 @@ class CreateSosBridgeIncidentUseCaseTest {
         val noteSlot = slot<String?>()
         coEvery {
             incidentRepository.createIncident(
-                any(), any(), any(), any(), capture(noteSlot), any(), capture(tokenSlot),
+                any(), any(), any(), any(), captureNullable(noteSlot), any(), captureNullable(tokenSlot),
             )
         } returns Outcome.Success(anIncident())
 
@@ -114,7 +114,7 @@ class CreateSosBridgeIncidentUseCaseTest {
     fun `succeeds without a location`() = runTest {
         val locationSlot = slot<GeoPoint?>()
         coEvery {
-            incidentRepository.createIncident(any(), any(), capture(locationSlot), any(), any(), any(), any())
+            incidentRepository.createIncident(any(), any(), captureNullable(locationSlot), any(), any(), any(), any())
         } returns Outcome.Success(anIncident())
 
         val result = useCase(token, "Needs help", location = null)

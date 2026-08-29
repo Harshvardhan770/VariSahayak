@@ -24,6 +24,11 @@ import com.varisahayak.feature.auth.SignInScreen
 import com.varisahayak.feature.auth.SignInViewModel
 import com.varisahayak.feature.auth.SignUpScreen
 import com.varisahayak.feature.auth.SignUpViewModel
+import com.varisahayak.feature.auth.ForgotPasswordScreen
+import com.varisahayak.feature.dashboard.VolunteerDashboardScreen
+import com.varisahayak.feature.incidents.IncidentDetailScreen
+import com.varisahayak.feature.incidents.IncidentListScreen
+import com.varisahayak.feature.incidents.ReportIncidentScreen
 import com.varisahayak.feature.lostfound.LostFoundScreen
 import com.varisahayak.feature.map.IncidentMapScreen
 import com.varisahayak.feature.qr.QrScannerScreen
@@ -103,8 +108,22 @@ fun VariSahayakApp(
                     }
                 )
             }
+            composable<Destination.ForgotPassword> {
+                ForgotPasswordScreen(onNavigateBack = { navController.popBackStack() })
+            }
             composable<Destination.VolunteerDashboard> {
-                PlaceholderScreen(title = stringResource(R.string.nav_dashboard) + " (Volunteer)")
+                VolunteerDashboardScreen(
+                    onReportIncident = {
+                        navController.navigate(Destination.ReportIncident())
+                    },
+                    onRaiseSos = {
+                        navController.navigate(Destination.ReportIncident(isSos = true))
+                    },
+                    onScanQr = { navController.navigate(Destination.QrScanner) },
+                    onIncidentSelected = { clientId ->
+                        navController.navigate(Destination.IncidentDetail(clientId))
+                    },
+                )
             }
             composable<Destination.ResponderDashboard> {
                 PlaceholderScreen(title = stringResource(R.string.nav_dashboard) + " (Responder)")
@@ -116,12 +135,14 @@ fun VariSahayakApp(
                 PlaceholderScreen(title = stringResource(R.string.role_admin))
             }
             composable<Destination.IncidentList> {
-                PlaceholderScreen(title = stringResource(R.string.nav_incidents))
+                IncidentListScreen(
+                    onIncidentSelected = { clientId ->
+                        navController.navigate(Destination.IncidentDetail(clientId))
+                    },
+                )
             }
-            // Placeholder until Phase 4 builds the detail screen. It must stay registered:
-            // the map taps through to this route, and an unregistered route throws.
             composable<Destination.IncidentDetail> {
-                PlaceholderScreen(title = stringResource(R.string.incident_detail_title))
+                IncidentDetailScreen()
             }
             composable<Destination.IncidentMap> {
                 IncidentMapScreen(
@@ -147,10 +168,16 @@ fun VariSahayakApp(
             composable<Destination.LostAndFound> {
                 LostFoundScreen()
             }
-            // Placeholder until Phase 4 builds the reporting screen. Must stay registered:
-            // the QR scanner routes here after a token is accepted.
             composable<Destination.ReportIncident> {
-                PlaceholderScreen(title = stringResource(R.string.report_title))
+                ReportIncidentScreen(
+                    onSaved = { clientId ->
+                        // Replace the form in the back stack: pressing back after filing a
+                        // report should not reopen a form that has already been submitted.
+                        navController.navigate(Destination.IncidentDetail(clientId)) {
+                            popUpTo(Destination.ReportIncident()) { inclusive = true }
+                        }
+                    },
+                )
             }
             composable<Destination.Profile> {
                 PlaceholderScreen(title = stringResource(R.string.nav_profile))

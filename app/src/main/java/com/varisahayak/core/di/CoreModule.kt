@@ -6,6 +6,8 @@ import com.varisahayak.core.common.DispatcherProvider
 import com.varisahayak.core.common.SystemClock
 import com.varisahayak.core.network.AndroidConnectivityObserver
 import com.varisahayak.core.network.ConnectivityObserver
+import com.varisahayak.data.sync.SyncScheduler
+import com.varisahayak.data.sync.WorkManagerSyncScheduler
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -50,4 +52,10 @@ abstract class CoreBindsModule {
     abstract fun bindConnectivityObserver(
         impl: AndroidConnectivityObserver,
     ): ConnectivityObserver
+
+    @Binds
+    @Singleton
+    abstract fun bindSyncScheduler(
+        impl: WorkManagerSyncScheduler,
+    ): SyncScheduler
 }
