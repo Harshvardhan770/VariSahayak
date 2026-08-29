@@ -1,0 +1,26 @@
+*.iml
+.gradle/
+/.idea/
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+
+# Written by Android Studio; holds sdk.dir, not secrets.
+local.properties
+
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+google-services.json
+*.jks
+*.keystore
+supabase/.env
+supabase/.env.*
+!supabase/.env.example
+
+# Supabase CLI local state
+supabase/.branches
+supabase/.temp
