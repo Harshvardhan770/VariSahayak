@@ -20,12 +20,17 @@ data class SignUpUiState(
     val password: String = "",
     val displayName: String = "",
     val selectedRole: UserRole = UserRole.VOLUNTEER,
+    /** Only collected — and only mandatory — when [selectedRole] is a responder role. */
+    val organisationName: String = "",
     val error: AppError? = null,
     val isLoading: Boolean = false,
     val isSuccess: Boolean = false,
     /** Set when the account exists but the email link has not been clicked yet. */
     val confirmationEmail: String? = null,
-)
+) {
+    /** Drives both showing the organisation field and requiring it. */
+    val requiresOrganisation: Boolean get() = selectedRole.isResponder
+}
 
 @HiltViewModel
 class SignUpViewModel @Inject constructor(
@@ -47,22 +52,44 @@ class SignUpViewModel @Inject constructor(
         _uiState.update { it.copy(displayName = displayName, error = null) }
     }
 
+    fun onOrganisationNameChanged(organisationName: String) {
+        _uiState.update { it.copy(organisationName = organisationName, error = null) }
+    }
+
     fun onRoleChanged(role: UserRole) {
-        _uiState.update { it.copy(selectedRole = role, error = null) }
+        _uiState.update {
+            it.copy(
+                selectedRole = role,
+                // Dropping back to a non-responder role hides the field; keeping its text
+                // would silently send an organisation the user can no longer see.
+                organisationName = if (role.isResponder) it.organisationName else "",
+                error = null,
+            )
+        }
     }
 
     fun signUp() {
-        val email = _uiState.value.email
-        val password = _uiState.value.password
-        val displayName = _uiState.value.displayName
-        val role = _uiState.value.selectedRole
+        val state = _uiState.value
+        val email = state.email
+        val password = state.password
+        val displayName = state.displayName
+        val role = state.selectedRole
+        val organisationName = state.organisationName.takeIf { role.isResponder }
 
         // Field-level validation lives in the repository so the sign-in, sign-up, and
         // reset flows all reject the same inputs with the same wording.
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
 
-            when (val result = authRepository.signUp(email, password, displayName, role)) {
+            val result = authRepository.signUp(
+                email = email,
+                password = password,
+                displayName = displayName,
+                role = role,
+                organisationName = organisationName,
+            )
+
+            when (result) {
                 is Outcome.Success -> _uiState.update {
                     when (val signUp = result.data) {
                         SignUpResult.SignedIn ->

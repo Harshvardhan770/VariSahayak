@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.varisahayak.core.common.AppError
 import com.varisahayak.core.common.Outcome
 import com.varisahayak.core.location.LocationProvider
+import com.varisahayak.core.network.ConnectivityObserver
+import com.varisahayak.data.sync.SyncScheduler
 import com.varisahayak.domain.model.GeoPoint
 import com.varisahayak.domain.model.Incident
 import com.varisahayak.domain.model.IncidentCategory
@@ -31,6 +33,8 @@ data class DashboardUiState(
     val assignedIncidents: List<Incident> = emptyList(),
     val activeSosList: List<Incident> = emptyList(),
     val unsyncedCount: Int = 0,
+    /** Drives the offline queue pill. UI messaging only — it never gates a write. */
+    val isOffline: Boolean = false,
     val isLoading: Boolean = false,
     val error: AppError? = null,
     val sosRaisedSuccess: Boolean = false,
@@ -42,7 +46,16 @@ class DashboardViewModel @Inject constructor(
     private val incidentRepository: IncidentRepository,
     private val responderRepository: ResponderRepository,
     private val locationProvider: LocationProvider,
+    private val syncScheduler: SyncScheduler,
+    private val connectivityObserver: ConnectivityObserver,
 ) : ViewModel() {
+
+    init {
+        // A responder or organiser may never write anything, and sync used to be driven
+        // only by writes — so their dashboard stayed empty no matter how many incidents
+        // volunteers filed. Opening the dashboard now asks for a pull.
+        syncScheduler.requestSync()
+    }
 
     private val _isLoading = MutableStateFlow(false)
     private val _error = MutableStateFlow<AppError?>(null)
@@ -53,7 +66,8 @@ class DashboardViewModel @Inject constructor(
         incidentRepository.observeOpen(),
         incidentRepository.observeActiveSos(),
         incidentRepository.observeUnsyncedCount(),
-    ) { profile, openList, sosList, unsynced ->
+        connectivityObserver.isOnline,
+    ) { profile, openList, sosList, unsynced, isOnline ->
         val assigned = if (profile != null) {
             openList.filter { it.assigneeId == profile.userId }
         } else emptyList()
@@ -64,6 +78,7 @@ class DashboardViewModel @Inject constructor(
             assignedIncidents = assigned,
             activeSosList = sosList,
             unsyncedCount = unsynced,
+            isOffline = !isOnline,
             isLoading = false,
             error = _error.value,
             sosRaisedSuccess = _sosRaisedSuccess.value,
@@ -113,4 +128,13 @@ class DashboardViewModel @Inject constructor(
     fun clearSosSuccessFlag() {
         _sosRaisedSuccess.value = false
     }
+
+    /**
+     * Manual retry behind the "N waiting to sync" pill.
+     *
+     * Enqueues rather than uploading directly: WorkManager already owns the retry policy
+     * and the network constraint, and a second upload path would be a second thing that
+     * can disagree about what has been sent.
+     */
+    fun retrySync() = syncScheduler.requestSync()
 }

@@ -27,6 +27,12 @@ class IncidentListViewModel @Inject constructor(
     private val syncScheduler: SyncScheduler,
 ) : ViewModel() {
 
+    init {
+        // Opening the list is a request to see current work. The read path stays local;
+        // this only asks the worker to top the local store up in the background.
+        syncScheduler.requestSync()
+    }
+
     /**
      * Reads from Room, never from the network. That is what makes this list identical
      * online and offline, and why it renders instantly on a cold start in a dead spot.

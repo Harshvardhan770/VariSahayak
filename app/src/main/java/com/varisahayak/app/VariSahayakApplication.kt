@@ -7,6 +7,7 @@ import android.os.Build
 import androidx.work.Configuration
 import androidx.hilt.work.HiltWorkerFactory
 import com.varisahayak.R
+import com.varisahayak.data.sync.SyncScheduler
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 
@@ -23,6 +24,9 @@ class VariSahayakApplication : Application(), Configuration.Provider {
     @Inject
     lateinit var workerFactory: HiltWorkerFactory
 
+    @Inject
+    lateinit var syncScheduler: SyncScheduler
+
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
             .setWorkerFactory(workerFactory)
@@ -31,6 +35,10 @@ class VariSahayakApplication : Application(), Configuration.Provider {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannels()
+        // Pull as well as push. Sync used to run only when this device wrote something,
+        // which left every read-only role — responders, organisers — looking at a
+        // permanently empty queue.
+        syncScheduler.ensurePeriodicSync()
     }
 
     /**

@@ -2,5 +2,5 @@
 <resources>
     <!-- Only the pre-Compose window background lives here. Every in-app colour is a
          semantic token in core/designsystem — see Color.kt. Do not add colours here. -->
-    <color name="window_background">#FFFBFE</color>
+    <color name="window_background">#F8FAFC</color>
 </resources>

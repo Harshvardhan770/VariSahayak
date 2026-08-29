@@ -7,6 +7,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.abs
 import kotlin.math.cos
+import kotlin.math.sqrt
 
 /**
  * Groups incidents into geographic clusters for the map and the command dashboard.
@@ -129,4 +130,18 @@ fun GeoPoint.isWithin(metres: Double, other: GeoPoint): Boolean {
     val lonDelta = abs(longitude - other.longitude) *
         111_320.0 * cos(Math.toRadians(latitude)).coerceAtLeast(0.01)
     return (latDelta * latDelta + lonDelta * lonDelta) <= metres * metres
+}
+
+/**
+ * Separation in metres, same equirectangular approximation as [isWithin].
+ *
+ * Exists so the incident cards can show "120 m away" without a second, subtly different
+ * idea of distance living in the UI layer. Over a pilgrimage route the error is well under
+ * the GPS accuracy the number is derived from.
+ */
+fun GeoPoint.distanceMetresTo(other: GeoPoint): Double {
+    val latDelta = abs(latitude - other.latitude) * 111_320.0
+    val lonDelta = abs(longitude - other.longitude) *
+        111_320.0 * cos(Math.toRadians(latitude)).coerceAtLeast(0.01)
+    return sqrt(latDelta * latDelta + lonDelta * lonDelta)
 }

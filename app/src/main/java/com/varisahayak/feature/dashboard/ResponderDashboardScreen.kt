@@ -1,38 +1,35 @@
 package com.varisahayak.feature.dashboard
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import com.varisahayak.R
 import com.varisahayak.core.designsystem.Dimens
+import com.varisahayak.core.designsystem.VariTheme
 import com.varisahayak.core.designsystem.component.EmptyState
+import com.varisahayak.core.designsystem.component.IncidentCard
 import com.varisahayak.core.designsystem.component.LoadingState
-import com.varisahayak.core.designsystem.component.PriorityBadge
-import com.varisahayak.core.designsystem.component.StatusChip
-import com.varisahayak.domain.model.Incident
+import com.varisahayak.core.designsystem.component.OfflineQueuePill
+import com.varisahayak.core.utils.rememberNowMillis
 import com.varisahayak.domain.model.IncidentStatus
 
+/**
+ * The responder's work queue.
+ *
+ * Two sections, in the only order that makes sense: what is already yours, then what is
+ * available. Each assigned card carries exactly one forward action, derived from the
+ * incident's current state — a responder should never have to decide which of four buttons
+ * advances the job.
+ */
 @Composable
 fun ResponderDashboardScreen(
     viewModel: DashboardViewModel,
@@ -40,26 +37,40 @@ fun ResponderDashboardScreen(
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val nowMillis by rememberNowMillis()
 
     if (uiState.isLoading && uiState.assignedIncidents.isEmpty()) {
         LoadingState(modifier = modifier)
         return
     }
 
+    // Anything already mine drops out of the "available" list. Showing a job in both places
+    // is how two responders end up driving to the same incident.
+    val assignedIds = uiState.assignedIncidents.mapTo(HashSet()) { it.clientId }
+    val available = uiState.openIncidents.filter { it.clientId !in assignedIds }
+
     LazyColumn(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(horizontal = Dimens.ScreenPadding),
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(
+            start = Dimens.ScreenPadding,
+            end = Dimens.ScreenPadding,
+            top = Dimens.SpaceSm,
+            bottom = Dimens.SpaceXl,
+        ),
         verticalArrangement = Arrangement.spacedBy(Dimens.SpaceMd),
     ) {
+        if (uiState.unsyncedCount > 0) {
+            item {
+                OfflineQueuePill(
+                    unsyncedCount = uiState.unsyncedCount,
+                    isOnline = !uiState.isOffline,
+                    onRetry = viewModel::retrySync,
+                )
+            }
+        }
+
         item {
-            Spacer(modifier = Modifier.height(Dimens.SpaceSm))
-            Text(
-                text = stringResource(R.string.dashboard_active_assignment),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
+            SectionHeading(stringResource(R.string.dashboard_active_assignment))
         }
 
         if (uiState.assignedIncidents.isEmpty()) {
@@ -67,143 +78,67 @@ fun ResponderDashboardScreen(
                 EmptyState(message = stringResource(R.string.dashboard_no_active_assignment))
             }
         } else {
-            items(
-                items = uiState.assignedIncidents,
-                key = { it.clientId },
-            ) { incident ->
-                ResponderIncidentCard(
+            items(items = uiState.assignedIncidents, key = { it.clientId }) { incident ->
+                val next = incident.status.nextAction()
+                IncidentCard(
                     incident = incident,
-                    onStatusChange = { newStatus ->
-                        viewModel.updateStatus(incident.clientId, newStatus)
-                    },
+                    nowMillis = nowMillis,
                     onClick = { onNavigateToDetail(incident.clientId) },
+                    actionLabel = next?.let { stringResource(it.labelRes) },
+                    onAction = next?.let {
+                        { viewModel.updateStatus(incident.clientId, it.target) }
+                    },
                 )
             }
         }
 
         item {
-            Spacer(modifier = Modifier.height(Dimens.SpaceMd))
-            Text(
-                text = "All Open Route Incidents",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
+            SectionHeading(stringResource(R.string.dashboard_pending_assignments))
         }
 
-        items(
-            items = uiState.openIncidents,
-            key = { "open-${it.clientId}" },
-        ) { incident ->
-            Card(
-                onClick = { onNavigateToDetail(incident.clientId) },
-                shape = RoundedCornerShape(Dimens.CornerMd),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(Dimens.SpaceMd),
-                    verticalArrangement = Arrangement.spacedBy(Dimens.SpaceSm),
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        PriorityBadge(priority = incident.priority)
-                        StatusChip(status = incident.status)
-                    }
-                    Text(
-                        text = incident.description,
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
+        if (available.isEmpty()) {
+            item {
+                EmptyState(message = stringResource(R.string.state_empty))
             }
-        }
-
-        item {
-            Spacer(modifier = Modifier.height(Dimens.SpaceLg))
+        } else {
+            items(items = available, key = { it.clientId }) { incident ->
+                IncidentCard(
+                    incident = incident,
+                    nowMillis = nowMillis,
+                    onClick = { onNavigateToDetail(incident.clientId) },
+                    actionLabel = stringResource(R.string.incident_accept),
+                    onAction = {
+                        viewModel.updateStatus(incident.clientId, IncidentStatus.ACCEPTED)
+                    },
+                )
+            }
         }
     }
 }
 
+/**
+ * The single forward step from a given state.
+ *
+ * Mirrors the main line of [com.varisahayak.domain.model.IncidentStateMachine]; the state
+ * machine itself remains the authority and rejects anything illegal, so a stale card cannot
+ * push an incident somewhere it should not go.
+ */
+private data class NextAction(val labelRes: Int, val target: IncidentStatus)
+
+private fun IncidentStatus.nextAction(): NextAction? = when (this) {
+    IncidentStatus.ASSIGNED -> NextAction(R.string.incident_accept, IncidentStatus.ACCEPTED)
+    IncidentStatus.ACCEPTED -> NextAction(R.string.incident_start, IncidentStatus.IN_PROGRESS)
+    IncidentStatus.IN_PROGRESS -> NextAction(R.string.incident_resolve, IncidentStatus.RESOLVED)
+
+    // Nothing to advance: either terminal, not yet triaged, or waiting on command.
+    else -> null
+}
+
 @Composable
-private fun ResponderIncidentCard(
-    incident: Incident,
-    onStatusChange: (IncidentStatus) -> Unit,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Card(
-        onClick = onClick,
-        shape = RoundedCornerShape(Dimens.CornerMd),
-        modifier = modifier.fillMaxWidth(),
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(Dimens.SpaceMd),
-            verticalArrangement = Arrangement.spacedBy(Dimens.SpaceSm),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                PriorityBadge(priority = incident.priority)
-                StatusChip(status = incident.status)
-            }
-
-            Text(
-                text = incident.description,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.SemiBold,
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceSm),
-            ) {
-                when (incident.status) {
-                    IncidentStatus.ASSIGNED -> {
-                        Button(
-                            onClick = { onStatusChange(IncidentStatus.ACCEPTED) },
-                            modifier = Modifier.weight(1f),
-                        ) {
-                            Text(stringResource(R.string.incident_accept))
-                        }
-                    }
-                    IncidentStatus.ACCEPTED -> {
-                        Button(
-                            onClick = { onStatusChange(IncidentStatus.IN_PROGRESS) },
-                            modifier = Modifier.weight(1f),
-                        ) {
-                            Text(stringResource(R.string.incident_start))
-                        }
-                    }
-                    IncidentStatus.IN_PROGRESS -> {
-                        Button(
-                            onClick = { onStatusChange(IncidentStatus.RESOLVED) },
-                            modifier = Modifier.weight(1f),
-                        ) {
-                            Text(stringResource(R.string.incident_resolve))
-                        }
-                    }
-                    else -> {}
-                }
-
-                if (incident.status != IncidentStatus.RESOLVED) {
-                    OutlinedButton(
-                        onClick = { onStatusChange(IncidentStatus.ESCALATED) },
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Text(stringResource(R.string.incident_escalate))
-                    }
-                }
-            }
-        }
-    }
+private fun SectionHeading(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleMedium,
+        color = VariTheme.colors.textSecondary,
+    )
 }

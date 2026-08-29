@@ -1,8 +1,9 @@
 package com.varisahayak.feature.dashboard
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,16 +13,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AddAlert
 import androidx.compose.material.icons.filled.FindInPage
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.ReportProblem
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -36,22 +33,28 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.varisahayak.R
 import com.varisahayak.core.designsystem.Dimens
 import com.varisahayak.core.designsystem.VariTheme
 import com.varisahayak.core.designsystem.component.EmptyState
+import com.varisahayak.core.designsystem.component.GlassSurface
+import com.varisahayak.core.designsystem.component.IncidentCard
 import com.varisahayak.core.designsystem.component.LoadingState
-import com.varisahayak.core.designsystem.component.OfflineBanner
-import com.varisahayak.core.designsystem.component.labelRes
-import com.varisahayak.core.designsystem.component.PriorityBadge
+import com.varisahayak.core.designsystem.component.OfflineQueuePill
+import com.varisahayak.core.designsystem.component.OperationalCard
 import com.varisahayak.core.designsystem.component.SosButton
-import com.varisahayak.core.designsystem.component.StatusChip
-import com.varisahayak.core.designsystem.component.SyncBadge
-import com.varisahayak.domain.model.Incident
+import com.varisahayak.core.utils.rememberNowMillis
 
+/**
+ * The volunteer's home surface.
+ *
+ * Laid out for one hand and one thumb. The SOS control is anchored to the bottom of the
+ * screen in a fixed drawer rather than scrolling with the feed, because the one action
+ * that must never require hunting is the one you take when something has gone wrong. The
+ * feed scrolls underneath it.
+ */
 @Composable
 fun VolunteerDashboardScreen(
     viewModel: DashboardViewModel,
@@ -64,6 +67,7 @@ fun VolunteerDashboardScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showSosDialog by remember { mutableStateOf(false) }
+    val nowMillis by rememberNowMillis()
 
     if (uiState.isLoading && uiState.openIncidents.isEmpty()) {
         LoadingState(modifier = modifier)
@@ -71,139 +75,171 @@ fun VolunteerDashboardScreen(
     }
 
     if (showSosDialog) {
-        AlertDialog(
-            onDismissRequest = { showSosDialog = false },
-            title = { Text(text = stringResource(R.string.sos_confirm_title)) },
-            text = { Text(text = stringResource(R.string.sos_confirm_message)) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showSosDialog = false
-                        viewModel.raiseEmergencySos()
-                    }
-                ) {
-                    Text(
-                        text = stringResource(R.string.action_confirm),
-                        color = VariTheme.colors.critical,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+        SosConfirmationDialog(
+            onConfirm = {
+                showSosDialog = false
+                viewModel.raiseEmergencySos()
             },
-            dismissButton = {
-                TextButton(onClick = { showSosDialog = false }) {
-                    Text(text = stringResource(R.string.action_cancel))
-                }
-            }
+            onDismiss = { showSosDialog = false },
         )
     }
 
-    LazyColumn(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(horizontal = Dimens.ScreenPadding),
-        verticalArrangement = Arrangement.spacedBy(Dimens.SpaceMd),
-    ) {
-        item {
-            Spacer(modifier = Modifier.height(Dimens.SpaceSm))
-            
-            // EMERGENCY SOS BUTTON
-            SosButton(
-                text = stringResource(R.string.dashboard_raise_sos),
-                onClick = { showSosDialog = true },
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
+    Box(modifier = modifier.fillMaxSize()) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                start = Dimens.ScreenPadding,
+                end = Dimens.ScreenPadding,
+                top = Dimens.SpaceSm,
+                // Clears the anchored SOS drawer so the last card is never trapped behind it.
+                bottom = SOS_DRAWER_CLEARANCE,
+            ),
+            verticalArrangement = Arrangement.spacedBy(Dimens.SpaceMd),
+        ) {
+            if (uiState.unsyncedCount > 0) {
+                item {
+                    OfflineQueuePill(
+                        unsyncedCount = uiState.unsyncedCount,
+                        isOnline = !uiState.isOffline,
+                        onRetry = viewModel::retrySync,
+                    )
+                }
+            }
 
-        if (uiState.unsyncedCount > 0) {
             item {
-                OfflineBanner(
-                    detail = stringResource(R.string.sync_unsynced_count, uiState.unsyncedCount)
-                )
-            }
-        }
-
-        // Quick Actions Grid
-        item {
-            Text(
-                text = "Quick Actions",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(top = Dimens.SpaceSm),
-            )
-
-            Spacer(modifier = Modifier.height(Dimens.SpaceSm))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceSm),
-            ) {
-                QuickActionCard(
-                    title = stringResource(R.string.dashboard_report_incident),
-                    icon = Icons.Filled.ReportProblem,
-                    onClick = onNavigateToReport,
-                    modifier = Modifier.weight(1f),
-                )
-                QuickActionCard(
-                    title = stringResource(R.string.nav_scan),
-                    icon = Icons.Filled.QrCodeScanner,
-                    onClick = onNavigateToScan,
-                    modifier = Modifier.weight(1f),
-                )
+                SectionHeading(text = stringResource(R.string.dashboard_quick_actions))
             }
 
-            Spacer(modifier = Modifier.height(Dimens.SpaceSm))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceSm),
-            ) {
-                QuickActionCard(
-                    title = stringResource(R.string.nav_map),
-                    icon = Icons.Filled.Map,
-                    onClick = onNavigateToMap,
-                    modifier = Modifier.weight(1f),
-                )
-                QuickActionCard(
-                    title = stringResource(R.string.lostfound_title),
-                    icon = Icons.Filled.FindInPage,
-                    onClick = onNavigateToLostFound,
-                    modifier = Modifier.weight(1f),
-                )
-            }
-        }
-
-        // Open Incidents Feed Section
-        item {
-            Text(
-                text = "Open Incidents & Feed",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(top = Dimens.SpaceMd),
-            )
-        }
-
-        if (uiState.openIncidents.isEmpty()) {
             item {
-                EmptyState(message = stringResource(R.string.state_empty))
+                Column(verticalArrangement = Arrangement.spacedBy(Dimens.SpaceSm)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceSm),
+                    ) {
+                        QuickActionCard(
+                            title = stringResource(R.string.dashboard_report_incident),
+                            icon = Icons.Filled.ReportProblem,
+                            onClick = onNavigateToReport,
+                            modifier = Modifier.weight(1f),
+                        )
+                        QuickActionCard(
+                            title = stringResource(R.string.nav_scan),
+                            icon = Icons.Filled.QrCodeScanner,
+                            onClick = onNavigateToScan,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceSm),
+                    ) {
+                        QuickActionCard(
+                            title = stringResource(R.string.nav_map),
+                            icon = Icons.Filled.Map,
+                            onClick = onNavigateToMap,
+                            modifier = Modifier.weight(1f),
+                        )
+                        QuickActionCard(
+                            title = stringResource(R.string.lostfound_title),
+                            icon = Icons.Filled.FindInPage,
+                            onClick = onNavigateToLostFound,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
+                }
             }
-        } else {
-            items(
-                items = uiState.openIncidents,
-                key = { it.clientId },
-            ) { incident ->
-                VolunteerIncidentCard(
-                    incident = incident,
-                    onClick = { onNavigateToDetail(incident.clientId) },
-                )
+
+            item {
+                SectionHeading(text = stringResource(R.string.dashboard_open_incidents))
+            }
+
+            if (uiState.openIncidents.isEmpty()) {
+                item {
+                    EmptyState(message = stringResource(R.string.state_empty))
+                }
+            } else {
+                items(items = uiState.openIncidents, key = { it.clientId }) { incident ->
+                    IncidentCard(
+                        incident = incident,
+                        nowMillis = nowMillis,
+                        onClick = { onNavigateToDetail(incident.clientId) },
+                    )
+                }
             }
         }
 
-        item {
-            Spacer(modifier = Modifier.height(Dimens.SpaceLg))
+        // --- bottom-anchored action drawer ---
+        GlassSurface(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .padding(Dimens.FloatingInset),
+        ) {
+            Column(modifier = Modifier.padding(Dimens.SpaceSm)) {
+                SosButton(
+                    text = stringResource(R.string.dashboard_raise_sos),
+                    onClick = { showSosDialog = true },
+                )
+            }
         }
     }
+}
+
+@Composable
+private fun SosConfirmationDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val colors = VariTheme.colors
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = stringResource(R.string.sos_confirm_title),
+                style = MaterialTheme.typography.headlineSmall,
+            )
+        },
+        text = {
+            Text(
+                text = stringResource(R.string.sos_confirm_message),
+                style = MaterialTheme.typography.bodyLarge,
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(
+                    text = stringResource(R.string.action_confirm),
+                    color = colors.critical,
+                    style = MaterialTheme.typography.labelLarge,
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(
+                    text = stringResource(R.string.action_cancel),
+                    color = colors.textSecondary,
+                    style = MaterialTheme.typography.labelLarge,
+                )
+            }
+        },
+        containerColor = colors.cardSurface,
+        titleContentColor = colors.textPrimary,
+        textContentColor = colors.textSecondary,
+    )
+}
+
+@Composable
+private fun SectionHeading(
+    text: String,
+    modifier: Modifier = Modifier,
+) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleMedium,
+        color = VariTheme.colors.textSecondary,
+        modifier = modifier,
+    )
 }
 
 @Composable
@@ -213,13 +249,10 @@ private fun QuickActionCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Card(
+    val colors = VariTheme.colors
+    OperationalCard(
+        modifier = modifier.height(QUICK_ACTION_HEIGHT),
         onClick = onClick,
-        shape = RoundedCornerShape(Dimens.CornerMd),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-        ),
-        modifier = modifier.height(90.dp),
     ) {
         Column(
             modifier = Modifier
@@ -231,66 +264,21 @@ private fun QuickActionCard(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(28.dp),
+                tint = colors.brandAccent,
+                modifier = Modifier.size(Dimens.IconLg),
             )
-            Spacer(modifier = Modifier.height(Dimens.SpaceXs))
+            Spacer(Modifier.height(Dimens.SpaceXs))
             Text(
                 text = title,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelLarge,
+                color = colors.textPrimary,
+                textAlign = TextAlign.Center,
             )
         }
     }
 }
 
-@Composable
-private fun VolunteerIncidentCard(
-    incident: Incident,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Card(
-        onClick = onClick,
-        shape = RoundedCornerShape(Dimens.CornerMd),
-        modifier = modifier.fillMaxWidth(),
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(Dimens.SpaceMd),
-            verticalArrangement = Arrangement.spacedBy(Dimens.SpaceSm),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                PriorityBadge(priority = incident.priority)
-                StatusChip(status = incident.status)
-            }
+private val QUICK_ACTION_HEIGHT = 96.dp
 
-            Text(
-                text = incident.description,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                SyncBadge(syncState = incident.syncState)
-                Text(
-                    text = stringResource(incident.category.labelRes()),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-    }
-}
+/** Height of the anchored SOS drawer plus its inset, reserved at the foot of the feed. */
+private val SOS_DRAWER_CLEARANCE = 128.dp

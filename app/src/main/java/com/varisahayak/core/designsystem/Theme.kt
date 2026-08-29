@@ -1,7 +1,9 @@
 package com.varisahayak.core.designsystem
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -10,48 +12,95 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
+/**
+ * The light scheme is the operational default. `background` is slate, not white, so a
+ * white card reads as raised without needing a heavy shadow to prove it — the whole
+ * elevation system rests on that one-step separation.
+ */
 private val LightColorScheme = lightColorScheme(
-    primary = Saffron40,
+    primary = Amber700,
     onPrimary = Color.White,
-    primaryContainer = Saffron90,
-    onPrimaryContainer = Saffron10,
-    secondary = Indigo40,
+    primaryContainer = Amber50,
+    onPrimaryContainer = Amber900,
+
+    secondary = Slate600,
     onSecondary = Color.White,
-    secondaryContainer = Indigo90,
-    onSecondaryContainer = Indigo10,
-    background = Neutral99,
-    onBackground = Neutral10,
-    surface = Neutral99,
-    onSurface = Neutral10,
-    surfaceVariant = Neutral95,
-    onSurfaceVariant = Neutral30,
-    outline = Neutral50,
-    error = CriticalLight,
+    secondaryContainer = Slate100,
+    onSecondaryContainer = Slate800,
+
+    tertiary = Blue700,
+    onTertiary = Color.White,
+    tertiaryContainer = Blue50,
+    onTertiaryContainer = Blue800,
+
+    background = Slate50,
+    onBackground = Slate900,
+    surface = Color.White,
+    onSurface = Slate900,
+    surfaceVariant = Slate100,
+    onSurfaceVariant = Slate600,
+    surfaceContainer = Slate50,
+    surfaceContainerHigh = Slate100,
+    surfaceContainerLow = Color.White,
+
+    outline = Slate400,
+    outlineVariant = Slate200,
+
+    error = Red700,
     onError = Color.White,
-    errorContainer = CriticalContainerLight,
-    onErrorContainer = Color(0xFF410002),
+    errorContainer = Red50,
+    onErrorContainer = Red800,
+
+    scrim = Slate950,
 )
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Saffron80,
-    onPrimary = Saffron10,
-    primaryContainer = Saffron30,
-    onPrimaryContainer = Saffron90,
-    secondary = Indigo80,
-    onSecondary = Indigo10,
-    secondaryContainer = Indigo30,
-    onSecondaryContainer = Indigo90,
-    background = Neutral10,
-    onBackground = Neutral90,
-    surface = Neutral10,
-    onSurface = Neutral90,
-    surfaceVariant = Neutral20,
-    onSurfaceVariant = Neutral80,
-    outline = Neutral50,
-    error = CriticalDark,
-    onError = Color(0xFF690005),
-    errorContainer = CriticalContainerDark,
-    onErrorContainer = Color(0xFFFFDAD6),
+    primary = Amber600,
+    onPrimary = Color(0xFF1C1207),
+    primaryContainer = Color(0xFF3A2405),
+    onPrimaryContainer = Amber200,
+
+    secondary = Slate300,
+    onSecondary = Slate900,
+    secondaryContainer = Slate800,
+    onSecondaryContainer = Slate200,
+
+    tertiary = Blue300Dark,
+    onTertiary = Color(0xFF172554),
+    tertiaryContainer = Color(0xFF172554),
+    onTertiaryContainer = Blue200,
+
+    background = Slate950,
+    onBackground = Slate100,
+    surface = Slate900,
+    onSurface = Slate100,
+    surfaceVariant = Slate800,
+    onSurfaceVariant = Slate300,
+    surfaceContainer = Slate900,
+    surfaceContainerHigh = Slate800,
+    surfaceContainerLow = Slate950,
+
+    outline = Slate500,
+    outlineVariant = Slate700,
+
+    error = Red300Dark,
+    onError = Color(0xFF450A0A),
+    errorContainer = Color(0xFF450A0A),
+    onErrorContainer = Red200,
+
+    scrim = Color.Black,
+)
+
+/**
+ * Corner radii. Small components stay tight; anything that behaves as a surface gets the
+ * card radius, so a drawer, a dialog and a card all read as the same material.
+ */
+private val VariShapes = Shapes(
+    extraSmall = RoundedCornerShape(Dimens.CornerSm),
+    small = RoundedCornerShape(Dimens.CornerSm),
+    medium = RoundedCornerShape(Dimens.CornerMd),
+    large = RoundedCornerShape(Dimens.CornerCard),
+    extraLarge = RoundedCornerShape(Dimens.CornerLg),
 )
 
 val LocalVariColors = staticCompositionLocalOf { LightVariColors }
@@ -73,6 +122,7 @@ fun VariSahayakTheme(
         MaterialTheme(
             colorScheme = colorScheme,
             typography = VariTypography,
+            shapes = VariShapes,
             content = content,
         )
     }

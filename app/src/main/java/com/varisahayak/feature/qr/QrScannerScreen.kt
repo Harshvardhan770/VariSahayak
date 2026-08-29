@@ -17,7 +17,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FlashOff
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -33,6 +32,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
@@ -41,7 +48,14 @@ import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.varisahayak.R
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.unit.dp
 import com.varisahayak.core.designsystem.Dimens
+import com.varisahayak.core.designsystem.VariTheme
+import com.varisahayak.core.designsystem.component.GlassSurface
 import com.varisahayak.core.designsystem.component.LoadingState
 import com.varisahayak.core.designsystem.component.VariPrimaryButton
 import com.varisahayak.core.designsystem.component.VariSecondaryButton
@@ -100,33 +114,43 @@ fun QrScannerScreen(
                 modifier = Modifier.fillMaxSize(),
             )
 
-            FilledTonalIconButton(
-                onClick = viewModel::toggleTorch,
+            ScannerViewport(modifier = Modifier.fillMaxSize())
+
+            GlassSurface(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(Dimens.ScreenPadding),
+                    .padding(Dimens.ScreenPadding)
+                    .size(Dimens.MinTouchTarget)
+                    .clip(MaterialTheme.shapes.large)
+                    .clickable(onClick = viewModel::toggleTorch),
             ) {
-                Icon(
-                    imageVector = if (uiState.torchEnabled) {
-                        Icons.Filled.FlashOn
-                    } else {
-                        Icons.Filled.FlashOff
-                    },
-                    contentDescription = stringResource(
-                        if (uiState.torchEnabled) R.string.cd_torch_off else R.string.cd_torch_on,
-                    ),
-                )
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = if (uiState.torchEnabled) {
+                            Icons.Filled.FlashOn
+                        } else {
+                            Icons.Filled.FlashOff
+                        },
+                        contentDescription = stringResource(
+                            if (uiState.torchEnabled) R.string.cd_torch_off else R.string.cd_torch_on,
+                        ),
+                        tint = VariTheme.colors.textPrimary,
+                    )
+                }
             }
         }
 
-        Surface(
-            color = MaterialTheme.colorScheme.surface,
+        GlassSurface(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .fillMaxWidth(),
+                .fillMaxWidth()
+                .padding(Dimens.FloatingInset),
         ) {
             Column(
-                modifier = Modifier.padding(Dimens.ScreenPadding),
+                modifier = Modifier.padding(Dimens.SpaceMd),
                 verticalArrangement = Arrangement.spacedBy(Dimens.SpaceSm),
             ) {
                 Text(
@@ -138,7 +162,7 @@ fun QrScannerScreen(
                         },
                     ),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = VariTheme.colors.textSecondary,
                 )
 
                 VariSecondaryButton(
@@ -331,3 +355,84 @@ private fun ScanOutcomeDialog(
         },
     )
 }
+
+/**
+ * The scanning target.
+ *
+ * Two jobs, and only two. It tells the volunteer where to point the camera, and it darkens
+ * everything outside that square so the tag is the brightest thing on screen — which is
+ * also what makes the framing readable in full sun, where a thin outline on a bright
+ * preview disappears entirely.
+ *
+ * The cut-out is a real hole punched with [BlendMode.Clear] rather than four rectangles
+ * arranged around a gap. Four rectangles have to agree with each other at every screen
+ * size, and they stop agreeing the moment someone changes a padding.
+ *
+ * Purely decorative to the accessibility tree: there is nothing here to announce that the
+ * hint text below does not already say, and the manual-entry path exists precisely so that
+ * nobody has to aim a camera at all.
+ */
+@Composable
+private fun ScannerViewport(modifier: Modifier = Modifier) {
+    val bracket = VariTheme.colors.brandAccent
+
+    Canvas(
+        // Offscreen compositing is what makes BlendMode.Clear punch through the scrim
+        // instead of clearing the window behind it.
+        modifier = modifier.graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen },
+    ) {
+        // 72% of the shorter edge: big enough to frame a tag at arm's length, small enough
+        // that the surround still reads as "outside the target".
+        val side = minOf(size.width, size.height) * 0.72f
+        val left = (size.width - side) / 2f
+        // Sits slightly above centre so the frosted hint panel at the foot of the screen
+        // does not crowd it.
+        val top = (size.height - side) / 2f - size.height * 0.06f
+        val radius = CornerRadius(VIEWPORT_CORNER_PX, VIEWPORT_CORNER_PX)
+
+        drawRect(color = Color.Black.copy(alpha = 0.55f))
+
+        drawRoundRect(
+            color = Color.Transparent,
+            topLeft = Offset(left, top),
+            size = Size(side, side),
+            cornerRadius = radius,
+            blendMode = BlendMode.Clear,
+        )
+
+        // Corner brackets rather than a full outline. A closed rectangle competes with the
+        // QR code's own quiet zone; brackets mark the corners and leave the code clean.
+        val armLength = side * 0.12f
+        val strokeWidth = 4.dp.toPx()
+        val right = left + side
+        val bottom = top + side
+
+        val arms = listOf(
+            // top-left
+            Offset(left, top + armLength) to Offset(left, top),
+            Offset(left, top) to Offset(left + armLength, top),
+            // top-right
+            Offset(right - armLength, top) to Offset(right, top),
+            Offset(right, top) to Offset(right, top + armLength),
+            // bottom-right
+            Offset(right, bottom - armLength) to Offset(right, bottom),
+            Offset(right, bottom) to Offset(right - armLength, bottom),
+            // bottom-left
+            Offset(left + armLength, bottom) to Offset(left, bottom),
+            Offset(left, bottom) to Offset(left, bottom - armLength),
+        )
+
+        arms.forEach { (start, end) ->
+            drawLine(
+                color = bracket,
+                start = start,
+                end = end,
+                strokeWidth = strokeWidth,
+                cap = StrokeCap.Round,
+            )
+        }
+    }
+}
+
+/** Corner radius of the viewport cut-out, in pixels at draw time. */
+private const val VIEWPORT_CORNER_PX = 24f
