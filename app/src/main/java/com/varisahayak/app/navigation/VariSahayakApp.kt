@@ -56,7 +56,7 @@ import com.varisahayak.feature.auth.SignInViewModel
 import com.varisahayak.feature.auth.SignUpScreen
 import com.varisahayak.feature.auth.SignUpViewModel
 import com.varisahayak.feature.dashboard.CommandDashboardScreen
-import com.varisahayak.feature.dashboard.DashboardViewModel
+import com.varisahayak.feature.dashboard.DashboardActions
 import com.varisahayak.feature.dashboard.ResponderDashboardScreen
 import com.varisahayak.feature.dashboard.VolunteerDashboardScreen
 import com.varisahayak.feature.incidents.IncidentDetailScreen
@@ -222,6 +222,9 @@ fun VariSahayakApp(
     ) { innerPadding ->
         VariNavHost(
             navController = navController,
+            walkieVisible = walkieVisible,
+            walkieChannelName = walkieState.channel?.name,
+            onToggleWalkie = { walkieVisible = !walkieVisible },
             modifier = Modifier.padding(innerPadding),
         )
     }
@@ -299,8 +302,25 @@ private fun String?.titleRes(): Int = when {
 @Composable
 private fun VariNavHost(
     navController: androidx.navigation.NavHostController,
+    walkieVisible: Boolean,
+    walkieChannelName: String?,
+    onToggleWalkie: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // Built once and shared by all five role dashboards: every one of them offers the same
+    // navigation verbs, and defining them per-screen is how two roles end up with the same
+    // button going to different places.
+    val dashboardActions = DashboardActions(
+        onReport = { navController.navigate(Destination.ReportIncident()) },
+        onScan = { navController.navigate(Destination.QrScanner) },
+        onMap = { navController.navigate(Destination.IncidentMap) },
+        onLostFound = { navController.navigate(Destination.LostAndFound()) },
+        onDetail = { clientId -> navController.navigate(Destination.IncidentDetail(clientId)) },
+        onToggleWalkie = onToggleWalkie,
+        // Replaced by each screen with its own confirmation flow; never fires as-is.
+        onSos = {},
+    )
+
     NavHost(
         navController = navController,
         startDestination = Destination.Splash,
@@ -336,46 +356,41 @@ private fun VariNavHost(
         }
 
         composable<Destination.VolunteerDashboard> {
-            val dashboardViewModel: DashboardViewModel = hiltViewModel()
             VolunteerDashboardScreen(
-                viewModel = dashboardViewModel,
-                onNavigateToReport = { navController.navigate(Destination.ReportIncident()) },
-                onNavigateToScan = { navController.navigate(Destination.QrScanner) },
-                onNavigateToMap = { navController.navigate(Destination.IncidentMap) },
-                onNavigateToLostFound = { navController.navigate(Destination.LostAndFound()) },
-                onNavigateToDetail = { clientId ->
-                    navController.navigate(Destination.IncidentDetail(clientId))
-                },
+                viewModel = hiltViewModel(),
+                actions = dashboardActions,
+                walkieChannelName = walkieChannelName,
+                walkieVisible = walkieVisible,
             )
         }
 
+        // One destination for medical, police and NGO: the screen reads the signed-in role
+        // and shows that uniform's counters. Three routes would have meant three ways to
+        // land on the same back stack entry.
         composable<Destination.ResponderDashboard> {
-            val dashboardViewModel: DashboardViewModel = hiltViewModel()
             ResponderDashboardScreen(
-                viewModel = dashboardViewModel,
-                onNavigateToDetail = { clientId ->
-                    navController.navigate(Destination.IncidentDetail(clientId))
-                },
+                viewModel = hiltViewModel(),
+                actions = dashboardActions,
+                walkieChannelName = walkieChannelName,
+                walkieVisible = walkieVisible,
             )
         }
 
         composable<Destination.CommandDashboard> {
-            val dashboardViewModel: DashboardViewModel = hiltViewModel()
             CommandDashboardScreen(
-                viewModel = dashboardViewModel,
-                onNavigateToDetail = { clientId ->
-                    navController.navigate(Destination.IncidentDetail(clientId))
-                },
+                viewModel = hiltViewModel(),
+                actions = dashboardActions,
+                walkieChannelName = walkieChannelName,
+                walkieVisible = walkieVisible,
             )
         }
 
         composable<Destination.AdminDashboard> {
-            val dashboardViewModel: DashboardViewModel = hiltViewModel()
             CommandDashboardScreen(
-                viewModel = dashboardViewModel,
-                onNavigateToDetail = { clientId ->
-                    navController.navigate(Destination.IncidentDetail(clientId))
-                },
+                viewModel = hiltViewModel(),
+                actions = dashboardActions,
+                walkieChannelName = walkieChannelName,
+                walkieVisible = walkieVisible,
             )
         }
 

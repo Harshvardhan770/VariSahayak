@@ -46,6 +46,7 @@
     <string name="auth_error_invalid_credentials">Email or password is incorrect.</string>
     <string name="auth_error_offline">No connection. Sign in requires internet access.</string>
     <string name="auth_error_no_role">Your account has no assigned role. Contact an administrator.</string>
+    <string name="auth_error_profile_unavailable">Signed in, but your account details could not be loaded. Try again, or contact an administrator.</string>
     <string name="auth_session_expired">Your session expired. Sign in again — nothing saved on this device has been lost.</string>
     <string name="auth_checking_session">Checking your session…</string>
 
@@ -360,4 +361,60 @@
     <string name="qr_location_manual_entry">Type the code</string>
     <string name="qr_location_choose_action">What would you like to do here?</string>
     <string name="qr_action_report_emergency">Report an emergency</string>
+
+    <!-- ============ role dashboards ============ -->
+    <string name="dashboard_greeting">Hello, %1$s</string>
+    <string name="dashboard_you">You</string>
+    <string name="dashboard_view_all">View all</string>
+    <string name="dashboard_view_details">View details</string>
+    <string name="dashboard_view_map">View map</string>
+    <string name="dashboard_my_tasks">My tasks</string>
+    <string name="dashboard_new_assigned">New assigned</string>
+    <string name="dashboard_in_progress">In progress</string>
+    <string name="dashboard_completed">Completed</string>
+    <string name="dashboard_active_incident">Active incident</string>
+    <string name="dashboard_incidents_near_you">Incidents near you</string>
+    <string name="dashboard_nearby_responders">Nearby responders</string>
+    <string name="dashboard_no_responders">No responders are on shift nearby</string>
+    <string name="dashboard_response_rate">Response rate</string>
+    <string name="dashboard_unassigned">Unassigned</string>
+    <string name="dashboard_overview">Dashboard overview</string>
+
+    <!-- ============ admin ============ -->
+    <string name="admin_active_responders">Active responders</string>
+    <string name="admin_sos_today">SOS alerts (today)</string>
+    <string name="admin_incidents_overview">Incidents overview</string>
+    <string name="admin_last_days">Last %1$d days</string>
+    <string name="admin_incident_mix">Incident mix</string>
+    <string name="admin_total">Total</string>
+    <string name="admin_operational_alerts">Operational alerts</string>
+    <string name="admin_alert_failed_sync">%1$d reports failed to sync</string>
+    <string name="admin_alert_failed_sync_detail">They are still on the device and will retry.</string>
+    <string name="admin_alert_unassigned">%1$d open incidents have no responder</string>
+    <string name="admin_alert_unassigned_detail">Matching found nobody available.</string>
+    <string name="admin_alert_critical">%1$d critical incidents are open</string>
+    <string name="admin_alert_critical_detail">Includes every active SOS.</string>
+    <string name="admin_all_clear">Nothing needs attention right now</string>
+
+    <!-- ============ police ============ -->
+    <string name="police_patrol_tasks">Patrol tasks</string>
+    <string name="police_crowd_incidents">Crowd &amp; traffic</string>
+
+    <!-- ============ medical ============ -->
+    <string name="medical_calls_today">Medical calls</string>
+    <string name="medical_patients_treated">Treated</string>
+    <string name="medical_sos_active">Active SOS</string>
+
+    <!-- ============ ngo ============ -->
+    <string name="ngo_relief_activities">Relief activities</string>
+    <string name="ngo_open_requests">Open requests</string>
+    <string name="ngo_people_helped">People helped</string>
+    <string name="ngo_relief_overview">Relief mix</string>
+
+    <!-- ============ not-yet-connected panels ============ -->
+    <string name="not_connected_supplies">Supply tracking is not connected yet. No supplies table exists in the backend.</string>
+    <string name="not_connected_health">Service health checks are not connected yet.</string>
+    <string name="not_connected_chart">Not enough data yet to draw a trend.</string>
+    <string name="not_connected_breakdown">No incidents to break down yet.</string>
+
 </resources>

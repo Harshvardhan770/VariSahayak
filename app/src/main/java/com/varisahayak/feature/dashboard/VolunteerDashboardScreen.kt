@@ -1,75 +1,71 @@
 package com.varisahayak.feature.dashboard
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.FindInPage
-import androidx.compose.material.icons.filled.Map
-import androidx.compose.material.icons.filled.QrCodeScanner
-import androidx.compose.material.icons.filled.ReportProblem
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
 import com.varisahayak.R
+import com.varisahayak.core.designsystem.Accents
 import com.varisahayak.core.designsystem.Dimens
 import com.varisahayak.core.designsystem.VariTheme
-import com.varisahayak.core.designsystem.component.EmptyState
-import com.varisahayak.core.designsystem.component.GlassSurface
-import com.varisahayak.core.designsystem.component.IncidentCard
+import com.varisahayak.core.designsystem.accentTone
+import com.varisahayak.core.designsystem.component.ActiveAssignmentCard
+import com.varisahayak.core.designsystem.component.CompactStat
+import com.varisahayak.core.designsystem.component.IncidentRow
 import com.varisahayak.core.designsystem.component.LoadingState
-import com.varisahayak.core.designsystem.component.OfflineQueuePill
+import com.varisahayak.core.designsystem.component.NotConnectedPanel
 import com.varisahayak.core.designsystem.component.OperationalCard
-import com.varisahayak.core.designsystem.component.SosButton
+import com.varisahayak.core.designsystem.component.PersonCard
+import com.varisahayak.core.designsystem.component.SectionHeader
+import com.varisahayak.core.designsystem.component.StatStrip
+import com.varisahayak.core.designsystem.component.labelRes
+import com.varisahayak.core.utils.formatDistance
 import com.varisahayak.core.utils.rememberNowMillis
+import com.varisahayak.domain.model.Incident
+import com.varisahayak.domain.model.ResponderAvailability
+import com.varisahayak.domain.usecase.distanceMetresTo
 
 /**
  * The volunteer's home surface.
  *
- * Laid out for one hand and one thumb. The SOS control is anchored to the bottom of the
- * screen in a fixed drawer rather than scrolling with the feed, because the one action
- * that must never require hunting is the one you take when something has gone wrong. The
- * feed scrolls underneath it.
+ * Ordered by how urgently a volunteer needs each thing: who and where they are, the four
+ * actions they take, the work that is theirs, then the work around them. Nothing on this
+ * screen is aggregate reporting — a volunteer on the route does not need a chart, they
+ * need the next thing to do.
  */
 @Composable
 fun VolunteerDashboardScreen(
     viewModel: DashboardViewModel,
-    onNavigateToReport: () -> Unit,
-    onNavigateToScan: () -> Unit,
-    onNavigateToMap: () -> Unit,
-    onNavigateToLostFound: () -> Unit,
-    onNavigateToDetail: (String) -> Unit,
+    actions: DashboardActions,
     modifier: Modifier = Modifier,
+    walkieChannelName: String? = null,
+    walkieVisible: Boolean = false,
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    var showSosDialog by remember { mutableStateOf(false) }
     val nowMillis by rememberNowMillis()
+    var showSosDialog by remember { mutableStateOf(false) }
 
-    if (uiState.isLoading && uiState.openIncidents.isEmpty()) {
+    LaunchedEffect(Unit) { viewModel.refreshMyLocation() }
+
+    if (uiState.isLoading && uiState.profile == null) {
         LoadingState(modifier = modifier)
         return
     }
@@ -84,201 +80,208 @@ fun VolunteerDashboardScreen(
         )
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
-                start = Dimens.ScreenPadding,
-                end = Dimens.ScreenPadding,
-                top = Dimens.SpaceSm,
-                // Clears the anchored SOS drawer so the last card is never trapped behind it.
-                bottom = SOS_DRAWER_CLEARANCE,
-            ),
-            verticalArrangement = Arrangement.spacedBy(Dimens.SpaceMd),
-        ) {
-            if (uiState.unsyncedCount > 0) {
-                item {
-                    OfflineQueuePill(
-                        unsyncedCount = uiState.unsyncedCount,
-                        isOnline = !uiState.isOffline,
-                        onRetry = viewModel::retrySync,
-                    )
-                }
-            }
-
-            item {
-                SectionHeading(text = stringResource(R.string.dashboard_quick_actions))
-            }
-
-            item {
-                Column(verticalArrangement = Arrangement.spacedBy(Dimens.SpaceSm)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceSm),
-                    ) {
-                        QuickActionCard(
-                            title = stringResource(R.string.dashboard_report_incident),
-                            icon = Icons.Filled.ReportProblem,
-                            onClick = onNavigateToReport,
-                            modifier = Modifier.weight(1f),
-                        )
-                        QuickActionCard(
-                            title = stringResource(R.string.nav_scan),
-                            icon = Icons.Filled.QrCodeScanner,
-                            onClick = onNavigateToScan,
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceSm),
-                    ) {
-                        QuickActionCard(
-                            title = stringResource(R.string.nav_map),
-                            icon = Icons.Filled.Map,
-                            onClick = onNavigateToMap,
-                            modifier = Modifier.weight(1f),
-                        )
-                        QuickActionCard(
-                            title = stringResource(R.string.lostfound_title),
-                            icon = Icons.Filled.FindInPage,
-                            onClick = onNavigateToLostFound,
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                }
-            }
-
-            item {
-                SectionHeading(text = stringResource(R.string.dashboard_open_incidents))
-            }
-
-            if (uiState.openIncidents.isEmpty()) {
-                item {
-                    EmptyState(message = stringResource(R.string.state_empty))
-                }
-            } else {
-                items(items = uiState.openIncidents, key = { it.clientId }) { incident ->
-                    IncidentCard(
-                        incident = incident,
-                        nowMillis = nowMillis,
-                        onClick = { onNavigateToDetail(incident.clientId) },
-                    )
-                }
-            }
-        }
-
-        // --- bottom-anchored action drawer ---
-        GlassSurface(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .padding(Dimens.FloatingInset),
-        ) {
-            Column(modifier = Modifier.padding(Dimens.SpaceSm)) {
-                SosButton(
-                    text = stringResource(R.string.dashboard_raise_sos),
-                    onClick = { showSosDialog = true },
-                )
-            }
-        }
+    val userId = uiState.profile?.userId
+    val tasks = remember(uiState.allIncidents, userId) {
+        DashboardMetrics.myTasks(uiState.allIncidents, userId)
     }
-}
+    val active = remember(uiState.allIncidents, userId) {
+        DashboardMetrics.activeAssignment(uiState.allIncidents, userId)
+    }
+    val nearby = remember(uiState.openIncidents, uiState.myLocation) {
+        uiState.openIncidents.nearestFirst(uiState.myLocation).take(5)
+    }
 
-@Composable
-private fun SosConfirmationDialog(
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val colors = VariTheme.colors
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(
-                text = stringResource(R.string.sos_confirm_title),
-                style = MaterialTheme.typography.headlineSmall,
-            )
-        },
-        text = {
-            Text(
-                text = stringResource(R.string.sos_confirm_message),
-                style = MaterialTheme.typography.bodyLarge,
-            )
-        },
-        confirmButton = {
-            TextButton(onClick = onConfirm) {
-                Text(
-                    text = stringResource(R.string.action_confirm),
-                    color = colors.critical,
-                    style = MaterialTheme.typography.labelLarge,
-                )
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(
-                    text = stringResource(R.string.action_cancel),
-                    color = colors.textSecondary,
-                    style = MaterialTheme.typography.labelLarge,
-                )
-            }
-        },
-        containerColor = colors.cardSurface,
-        titleContentColor = colors.textPrimary,
-        textContentColor = colors.textSecondary,
-    )
-}
-
-@Composable
-private fun SectionHeading(
-    text: String,
-    modifier: Modifier = Modifier,
-) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.titleMedium,
-        color = VariTheme.colors.textSecondary,
-        modifier = modifier,
-    )
-}
-
-@Composable
-private fun QuickActionCard(
-    title: String,
-    icon: ImageVector,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val colors = VariTheme.colors
-    OperationalCard(
-        modifier = modifier.height(QUICK_ACTION_HEIGHT),
-        onClick = onClick,
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(
+            start = Dimens.ScreenPadding,
+            end = Dimens.ScreenPadding,
+            top = Dimens.SpaceSm,
+            bottom = Dimens.SpaceXl,
+        ),
+        verticalArrangement = Arrangement.spacedBy(Dimens.SpaceLg),
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(Dimens.SpaceSm),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = colors.brandAccent,
-                modifier = Modifier.size(Dimens.IconLg),
+        dashboardHeaderItems(
+            uiState = uiState,
+            actions = actions.copy(onSos = { showSosDialog = true }),
+            walkieChannelName = walkieChannelName,
+            walkieVisible = walkieVisible,
+            onRetrySync = viewModel::retrySync,
+        )
+
+        item(key = "my-tasks") {
+            Column(verticalArrangement = Arrangement.spacedBy(Dimens.SpaceSm)) {
+                SectionHeader(title = stringResource(R.string.dashboard_my_tasks))
+                MyTasksStrip(tasks = tasks)
+            }
+        }
+
+        if (active != null) {
+            item(key = "active") {
+                Column(verticalArrangement = Arrangement.spacedBy(Dimens.SpaceSm)) {
+                    SectionHeader(
+                        title = stringResource(R.string.dashboard_active_incident),
+                        actionLabel = stringResource(R.string.dashboard_view_details),
+                        onAction = { actions.onDetail(active.clientId) },
+                    )
+                    ActiveAssignmentCard(
+                        incident = active,
+                        nowMillis = nowMillis,
+                        myLocation = uiState.myLocation,
+                        statusLabel = stringResource(active.status.labelRes()),
+                        onClick = { actions.onDetail(active.clientId) },
+                    )
+                }
+            }
+        }
+
+        item(key = "nearby-responders") {
+            NearbyRespondersSection(
+                uiState = uiState,
+                emptyMessage = stringResource(R.string.dashboard_no_responders),
             )
-            Spacer(Modifier.height(Dimens.SpaceXs))
-            Text(
-                text = title,
-                style = MaterialTheme.typography.labelLarge,
-                color = colors.textPrimary,
-                textAlign = TextAlign.Center,
+        }
+
+        item(key = "near-you") {
+            SectionHeader(
+                title = stringResource(R.string.dashboard_incidents_near_you),
+                actionLabel = stringResource(R.string.dashboard_view_map),
+                onAction = actions.onMap,
             )
+        }
+
+        if (nearby.isEmpty()) {
+            item(key = "near-you-empty") {
+                OperationalCard {
+                    NotConnectedPanel(message = stringResource(R.string.map_no_incidents))
+                }
+            }
+        } else {
+            item(key = "near-you-list") {
+                OperationalCard {
+                    Column(modifier = Modifier.padding(vertical = Dimens.SpaceXs)) {
+                        nearby.forEach { incident ->
+                            IncidentRow(
+                                incident = incident,
+                                nowMillis = nowMillis,
+                                myLocation = uiState.myLocation,
+                                onClick = { actions.onDetail(incident.clientId) },
+                                modifier = Modifier.padding(horizontal = Dimens.SpaceSm),
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
 
-private val QUICK_ACTION_HEIGHT = 96.dp
+/**
+ * The three task counters.
+ *
+ * Shared with the responder dashboards, because "what is mine" is the same question
+ * whatever the uniform.
+ */
+@Composable
+internal fun MyTasksStrip(
+    tasks: MyTasks,
+    modifier: Modifier = Modifier,
+) {
+    StatStrip(
+        modifier = modifier,
+        stats = listOf(
+            CompactStat(
+                label = stringResource(R.string.dashboard_new_assigned),
+                value = tasks.newAssigned.toString(),
+                icon = Icons.Filled.ErrorOutline,
+                tone = Accents.red,
+            ),
+            CompactStat(
+                label = stringResource(R.string.dashboard_in_progress),
+                value = tasks.inProgress.toString(),
+                icon = Icons.Filled.Schedule,
+                tone = Accents.amber,
+            ),
+            CompactStat(
+                label = stringResource(R.string.dashboard_completed),
+                value = tasks.completed.toString(),
+                icon = Icons.Filled.CheckCircle,
+                tone = Accents.green,
+            ),
+        ),
+    )
+}
 
-/** Height of the anchored SOS drawer plus its inset, reserved at the foot of the feed. */
-private val SOS_DRAWER_CLEARANCE = 128.dp
+/**
+ * Who else is on shift nearby.
+ *
+ * Real roster data, from `ResponderRepository.observeAvailable()`. Row-level security
+ * decides who can see it: a volunteer typically cannot, and the section then reports that
+ * nobody is visible rather than pretending the route is empty.
+ */
+@Composable
+internal fun NearbyRespondersSection(
+    uiState: DashboardUiState,
+    emptyMessage: String,
+    modifier: Modifier = Modifier,
+) {
+    val colors = VariTheme.colors
+    val ranked = remember(uiState.nearbyResponders, uiState.myLocation) {
+        val mine = uiState.myLocation
+        uiState.nearbyResponders.sortedBy { responder ->
+            val theirs = responder.lastKnownLocation
+            if (mine != null && theirs != null) mine.distanceMetresTo(theirs) else Double.MAX_VALUE
+        }
+    }
+
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(Dimens.SpaceSm),
+    ) {
+        SectionHeader(title = stringResource(R.string.dashboard_nearby_responders))
+
+        if (ranked.isEmpty()) {
+            OperationalCard {
+                NotConnectedPanel(message = emptyMessage)
+            }
+        } else {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceSm)) {
+                items(items = ranked, key = { it.userId }) { responder ->
+                    val separation = uiState.myLocation?.let { mine ->
+                        responder.lastKnownLocation?.let { mine.distanceMetresTo(it) }
+                    }
+                    PersonCard(
+                        displayName = responder.displayName
+                            ?: stringResource(responder.role.labelRes()),
+                        roleLabel = stringResource(responder.role.labelRes()),
+                        tone = responder.role.accentTone(),
+                        // Capabilities are free-text codes from the server. Shown raw and
+                        // humanised rather than mapped, because the set is open-ended and a
+                        // when() over it would silently drop anything new.
+                        capabilityLabel = responder.capabilities.firstOrNull()?.humanise(),
+                        distanceLabel = separation?.let { formatDistance(it) },
+                        isAvailable = responder.availability == ResponderAvailability.AVAILABLE,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** FIRST_AID -> First aid. */
+private fun String.humanise(): String =
+    lowercase().replace('_', ' ').replaceFirstChar { it.uppercase() }
+
+/** Nearest first, then most recent. Incidents without a fix sort last, never dropped. */
+internal fun List<Incident>.nearestFirst(
+    myLocation: com.varisahayak.domain.model.GeoPoint?,
+): List<Incident> = sortedWith(
+    compareBy<Incident> { incident ->
+        val theirs = incident.location
+        if (myLocation != null && theirs != null) {
+            myLocation.distanceMetresTo(theirs)
+        } else {
+            Double.MAX_VALUE
+        }
+    }.thenByDescending { it.reportedAtEpochMillis },
+)

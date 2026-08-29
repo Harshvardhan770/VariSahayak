@@ -48,6 +48,16 @@ sealed interface AppError {
     /** The session expired. Local unsynced data must be preserved. */
     data class SessionExpired(override val cause: Throwable? = null) : AppError
 
+    /**
+     * Credentials were accepted but the account's profile could not be resolved, so there
+     * is no role to route on.
+     *
+     * Its own category rather than a [Network] failure because the two need different
+     * words: the connection is fine, and retrying without someone fixing the account — or
+     * the table privileges behind it — will fail exactly the same way.
+     */
+    data class ProfileUnavailable(override val cause: Throwable? = null) : AppError
+
     data class Validation(
         val field: String? = null,
         val message: String,

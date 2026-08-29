@@ -22,6 +22,14 @@ data class Profile(
  */
 data class Responder(
     val userId: String,
+    /**
+     * Carried so a roster row can be shown to a human.
+     *
+     * Nullable because the cache predates this field: an entity written by an older build
+     * has no name, and a responder with an unknown name is still dispatchable. Callers
+     * fall back to the role rather than rendering an empty card.
+     */
+    val displayName: String? = null,
     val role: UserRole,
     val availability: ResponderAvailability,
     val areaId: String? = null,
