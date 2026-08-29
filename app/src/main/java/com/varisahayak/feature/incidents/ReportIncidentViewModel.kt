@@ -42,7 +42,23 @@ data class ReportIncidentUiState(
     val savedClientId: String? = null,
 )
 
-enum class LocationCaptureState { Idle, Capturing, Captured, Approximate, Unavailable }
+/**
+ * Why the location line says what it says.
+ *
+ * [PermissionRequired] and [LocationOff] are split out from [Unavailable] because they are
+ * the only two the volunteer can do anything about, and they need different actions — a
+ * permission prompt and the system location toggle. Collapsed together they produced a
+ * Retry button that could never succeed however many times it was pressed.
+ */
+enum class LocationCaptureState {
+    Idle,
+    Capturing,
+    Captured,
+    Approximate,
+    PermissionRequired,
+    LocationOff,
+    Unavailable,
+}
 
 /** The description must say something before it is worth asking a model about it. */
 private const val MIN_DESCRIPTION_FOR_SUGGESTION = 15
@@ -148,6 +164,18 @@ class ReportIncidentViewModel @Inject constructor(
                     it.copy(location = fix.point, locationState = LocationCaptureState.Approximate)
                 }
 
+                // Named rather than collapsed, so the screen can offer the one action that
+                // actually resolves each: the permission prompt, or the system toggle.
+                is LocationFix.PermissionDenied -> _uiState.update {
+                    it.copy(location = null, locationState = LocationCaptureState.PermissionRequired)
+                }
+
+                is LocationFix.LocationDisabled -> _uiState.update {
+                    it.copy(location = null, locationState = LocationCaptureState.LocationOff)
+                }
+
+                // Timeout and Unavailable really are worth another try — a fix that did not
+                // arrive in eight seconds often arrives in the next eight.
                 else -> _uiState.update {
                     it.copy(location = null, locationState = LocationCaptureState.Unavailable)
                 }
