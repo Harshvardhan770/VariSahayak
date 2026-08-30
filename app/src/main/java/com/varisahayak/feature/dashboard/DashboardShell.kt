@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FindInPage
 import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.PersonSearch
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.ReportProblem
 import androidx.compose.material3.AlertDialog
@@ -40,6 +41,7 @@ data class DashboardActions(
     val onScan: () -> Unit,
     val onMap: () -> Unit,
     val onLostFound: () -> Unit,
+    val onReportFound: () -> Unit,
     val onDetail: (String) -> Unit,
     val onToggleWalkie: () -> Unit,
     val onSos: () -> Unit,
@@ -144,6 +146,14 @@ private fun quickActionsFor(
         ),
     )
     if (capabilities.canUseLostFound) {
+        add(
+            QuickAction(
+                label = stringResource(R.string.lostfound_report_found),
+                icon = Icons.Filled.PersonSearch,
+                tone = Accents.green,
+                onClick = actions.onReportFound,
+            ),
+        )
         add(
             QuickAction(
                 label = stringResource(R.string.lostfound_title),

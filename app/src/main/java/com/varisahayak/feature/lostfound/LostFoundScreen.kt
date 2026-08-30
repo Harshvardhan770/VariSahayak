@@ -13,6 +13,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -68,6 +70,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -85,7 +88,6 @@ import com.varisahayak.core.designsystem.Dimens
 import com.varisahayak.core.designsystem.VariTheme
 import com.varisahayak.core.designsystem.component.EmptyState
 import com.varisahayak.core.designsystem.component.SyncBadge
-import com.varisahayak.core.designsystem.component.VariPrimaryButton
 import com.varisahayak.core.designsystem.component.VariSecondaryButton
 import com.varisahayak.core.media.PhotoCapture
 import com.varisahayak.core.permissions.AppPermissions
@@ -106,6 +108,7 @@ import java.io.File
 fun LostFoundScreen(
     modifier: Modifier = Modifier,
     onOpenMatches: () -> Unit = {},
+    onReportDetail: (String) -> Unit = {},
     viewModel: LostFoundViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -126,6 +129,8 @@ fun LostFoundScreen(
                 .padding(Dimens.ScreenPadding),
             verticalArrangement = Arrangement.spacedBy(Dimens.SpaceMd),
         ) {
+            // Candidates first. A pending match is somebody waiting to be reunited, and it
+            // outranks everything else on this screen.
             // Candidates first.
             if (uiState.candidateCount > 0) {
                 Card(
@@ -215,7 +220,10 @@ fun LostFoundScreen(
                             enter = fadeIn(tween(600, delayMillis = 100 + index * 50)) +
                                     slideInVertically(tween(600, delayMillis = 100 + index * 50)) { 20 }
                         ) {
-                            LostFoundRow(report = report)
+                            LostFoundRow(
+                                report = report,
+                                onClick = { onReportDetail(report.clientId) },
+                            )
                         }
                     }
                 }
@@ -268,10 +276,16 @@ private fun BoardFilter.labelRes(): Int = when (this) {
     BoardFilter.FOUND -> R.string.lostfound_side_found
 }
 
+/**
+ * The two ways onto the board, weighted equally.
+ *
+ * Colour carries the side — red for a person missing, green for a person found — but the
+ * label and the icon carry it too, so the pair is still distinguishable without colour.
+ */
 @Composable
 private fun ActionButtonsRow(
     onReportLost: () -> Unit,
-    onFoundPerson: () -> Unit
+    onFoundPerson: () -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -302,8 +316,8 @@ private fun EnhancedActionButton(
     onClick: () -> Unit,
     containerColor: Color,
     contentColor: Color,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    modifier: Modifier = Modifier
+    icon: ImageVector,
+    modifier: Modifier = Modifier,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -341,9 +355,19 @@ private fun EnhancedActionButton(
     }
 }
 
+/**
+ * One report on the board.
+ *
+ * The thumbnail leads, because a face is what a volunteer scanning the list actually
+ * recognises. Tapping the row opens the report — the only route to a report's detail.
+ */
 @Composable
-private fun LostFoundRow(report: LostFoundReport) {
+private fun LostFoundRow(
+    report: LostFoundReport,
+    onClick: () -> Unit,
+) {
     Card(
+        onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(Dimens.CornerCard),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
@@ -355,9 +379,12 @@ private fun LostFoundRow(report: LostFoundReport) {
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Photo display if available
+            // Decoded small and off the full image: this runs during composition, and a
+            // list of full-size JPEGs is a visible stutter on the phones this app targets.
             val photoPath = report.photoLocalPath
-            val bitmap = remember(photoPath) { photoPath?.let { PhotoCapture.thumbnail(it, maxEdgePx = 160) } }
+            val bitmap = remember(photoPath) {
+                photoPath?.let { PhotoCapture.thumbnail(it, maxEdgePx = 160) }
+            }
 
             Box(
                 modifier = Modifier
@@ -369,13 +396,19 @@ private fun LostFoundRow(report: LostFoundReport) {
                 if (bitmap != null) {
                     Image(
                         bitmap = bitmap.asImageBitmap(),
+                        // Labelled by the row, not described. Nothing here should try to
+                        // characterise a photograph of a missing person.
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize()
                     )
                 } else {
                     Icon(
-                        imageVector = if (report.kind == LostFoundKind.LOST) Icons.Default.Search else Icons.Default.PersonSearch,
+                        imageVector = if (report.kind == LostFoundKind.LOST) {
+                            Icons.Default.Search
+                        } else {
+                            Icons.Default.PersonSearch
+                        },
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                         modifier = Modifier.size(32.dp)
@@ -438,8 +471,13 @@ private fun LostFoundRow(report: LostFoundReport) {
                     horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceSm),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val kindColor = if (report.kind == LostFoundKind.LOST) VariTheme.colors.critical else VariTheme.colors.success
-                    
+                    // Side and status as words, never colour alone.
+                    val kindColor = if (report.kind == LostFoundKind.LOST) {
+                        VariTheme.colors.critical
+                    } else {
+                        VariTheme.colors.success
+                    }
+
                     Surface(
                         color = kindColor.copy(alpha = 0.1f),
                         shape = RoundedCornerShape(Dimens.CornerPill)
@@ -516,6 +554,50 @@ private fun ReportDialog(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(Dimens.SpaceMd),
             ) {
+                // Which side of the board this report belongs to, changeable here.
+                //
+                // Every entry point fixes the kind before the dialog opens — the two board
+                // buttons, the dashboard's Found Person action, a QR scan. A volunteer who
+                // tapped the wrong one had no way back except cancelling and re-entering
+                // everything, and the form gave no sign the other side existed at all.
+                Row(horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceSm)) {
+                    LostFoundKind.entries.forEach { kind ->
+                        FilterChip(
+                            selected = state.form.kind == kind,
+                            onClick = {
+                                onChange { form ->
+                                    if (form.kind == kind) {
+                                        form
+                                    } else {
+                                        // Each side asks a question the other does not, and
+                                        // the answers are not interchangeable: a condition
+                                        // nobody assessed, or a guardian's phone number on a
+                                        // report about the guardian, would both be filed
+                                        // silently because the field is hidden by then.
+                                        form.copy(
+                                            kind = kind,
+                                            condition = null,
+                                            guardianName = "",
+                                            guardianPhone = "",
+                                        )
+                                    }
+                                }
+                            },
+                            label = {
+                                Text(
+                                    stringResource(
+                                        when (kind) {
+                                            LostFoundKind.LOST -> R.string.lostfound_side_lost
+                                            LostFoundKind.FOUND -> R.string.lostfound_side_found
+                                        },
+                                    ),
+                                )
+                            },
+                            modifier = Modifier.defaultMinSize(minHeight = Dimens.MinTouchTarget),
+                        )
+                    }
+                }
+
                 state.scannedLocation?.let { location ->
                     Text(
                         text = stringResource(R.string.lostfound_at_location, location.locationName),

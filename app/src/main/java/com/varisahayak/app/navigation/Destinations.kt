@@ -69,6 +69,9 @@ sealed interface Destination {
         val kind: String? = null,
     ) : Destination
 
+    @Serializable
+    data class LostFoundDetail(val clientId: String) : Destination
+
     /** The protected match-review surface. Human confirmation lives here. */
     @Serializable
     data object MatchReview : Destination

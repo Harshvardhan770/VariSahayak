@@ -166,17 +166,11 @@ class LocalAlertNotifier @Inject constructor(
     private fun notifySos(incident: Incident) {
         val notification = builder(
             channelId = context.getString(R.string.notification_channel_id_sos),
-            title = context.getString(R.string.notification_sos_title),
+            title = titleFor(incident, R.string.notification_sos_title),
             body = context.getString(R.string.notification_sos_body),
             incident = incident,
             type = TYPE_SOS,
         )
-
-        val alert = templateGenerator.generate(incident, System.currentTimeMillis())
-
-            .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(alert.title)
-            .setContentText(alert.body)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             // The sticky part. Ongoing blocks the swipe; autoCancel(false) means opening the
@@ -197,7 +191,7 @@ class LocalAlertNotifier @Inject constructor(
     private fun notifyIncident(incident: Incident) {
         val notification = builder(
             channelId = context.getString(R.string.notification_channel_id_escalation),
-            title = context.getString(R.string.notification_incident_title),
+            title = titleFor(incident, R.string.notification_incident_title),
             body = context.getString(R.string.notification_incident_body),
             incident = incident,
             type = TYPE_INCIDENT,
@@ -205,13 +199,27 @@ class LocalAlertNotifier @Inject constructor(
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_EVENT)
             .setAutoCancel(true)
-
-            .setContentIntent(openIntent(incident))
-            .setStyle(NotificationCompat.BigTextStyle().bigText(alert.body))
             .build()
 
         post(incidentNotificationId(incident.clientId), notification)
     }
+
+    /**
+     * The category-specific headline for an incident, falling back to the generic one.
+     *
+     * Only [AlertMessage.title] is taken from the generator, and deliberately so. Every
+     * template title is a plain string resource — "Missing child", "Medical emergency" — so
+     * it tells a responder what they are being called to without putting anything about a
+     * person on a lock screen. The generated *body* is not used here: for a lost-person
+     * incident it interpolates `incident.description`, which is free text a volunteer typed
+     * about a real child, and this class's whole contract is that no such text reaches the
+     * tray. The body stays the static resource the push path uses.
+     */
+    private fun titleFor(incident: Incident, fallbackRes: Int): String =
+        runCatching { templateGenerator.generate(incident, System.currentTimeMillis()).title }
+            .getOrNull()
+            ?.takeIf { it.isNotBlank() }
+            ?: context.getString(fallbackRes)
 
     private fun builder(
         channelId: String,

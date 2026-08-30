@@ -1,10 +1,13 @@
 package com.varisahayak.feature.lostfound
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.navigation.toRoute
 import com.varisahayak.core.common.AppError
 import com.varisahayak.core.common.Outcome
 import com.varisahayak.core.common.getOrNull
+import com.varisahayak.app.navigation.Destination
 import com.varisahayak.core.location.LocationProvider
 import com.varisahayak.core.media.PhotoCapture
 import com.varisahayak.domain.model.FaceMatchStatus
@@ -127,7 +130,19 @@ class LostFoundViewModel @Inject constructor(
     private val lostFoundRepository: LostFoundRepository,
     private val qrLocationRepository: QrLocationRepository,
     private val locationProvider: LocationProvider,
+    savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
+
+    /**
+     * How this screen was opened.
+     *
+     * `Destination.LostAndFound` has always carried these three, and nothing read them: the
+     * dashboard's Found Person action and the QR scanner's "report a found person" both
+     * navigated here with `kind = "FOUND"` and a scanned help point, and both landed on the
+     * board with no form open and the location thrown away. §7.15 asks for Found Person to
+     * be a first-class action, and an action that opens a list is not one.
+     */
+    private val route = savedStateHandle.toRoute<Destination.LostAndFound>()
 
     private val _uiState = MutableStateFlow(LostFoundUiState())
     val uiState: StateFlow<LostFoundUiState> = _uiState.asStateFlow()
@@ -146,6 +161,16 @@ class LostFoundViewModel @Inject constructor(
                 _uiState.update { it.copy(unsyncedCount = count) }
             }
         }
+
+        // Attach the scanned sign before opening the form, so the volunteer sees the help
+        // point they are standing at already filled in rather than appearing a moment later.
+        // resolve() reads the local cache first, so this still works in a dead spot - the
+        // scanner that sent us here has already cached it.
+        route.qrLocationToken?.let(::attachScannedLocation)
+
+        // Straight onto the right form. The board is still behind the dialog, so dismissing
+        // it leaves the volunteer exactly where the old behaviour would have put them.
+        route.kind?.let { openReport(LostFoundKind.fromWire(it)) }
     }
 
     /**

@@ -54,7 +54,7 @@ interface WalkieController {
  */
 object WalkieChannels {
 
-    val DEFAULT = WalkieChannel(id = "route-main", name = "Route Net 1", memberCount = 0)
+    val DEFAULT = WalkieChannel(id = "comm-1", name = "Comm 1", memberCount = 0)
 
     val ALL = listOf(
         DEFAULT,

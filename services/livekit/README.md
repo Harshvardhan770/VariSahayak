@@ -218,7 +218,7 @@ curl -s -X POST "$SUPABASE_URL/functions/v1/livekit-token" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "apikey: $SUPABASE_ANON_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"room":"route-main"}'
+  -d '{"room":"comm-1"}'
 ```
 
 The access token expires after an hour (`jwt_expiry = 3600` in `supabase/config.toml`), so
@@ -261,7 +261,7 @@ Two phones, both signed in as different accounts, both on the same channel:
 3. Hold PTT on device A. Device B should hear it inside a second, and B's subtitle should
    name A's display name.
 4. Hold both at once. Both should be heard, and each subtitle should name the other.
-5. Switch A to Medical. A leaves the Route Net room and B stops hearing A.
+5. Switch A to Medical. A leaves the Comm 1 room and B stops hearing A.
 6. Hold PTT for 30 seconds without releasing. It should unkey itself and the button should
    return to "Hold to talk".
 
@@ -275,6 +275,8 @@ Two phones, both signed in as different accounts, both on the same channel:
 | Connects and shows the right member count, but no audio | Media ports. UDP 7882 blocked, or `use_external_ip` is false and LiveKit is advertising a 10.x address. |
 | Works on mobile data, silent on venue Wi-Fi | UDP blocked by that network. This is what the TCP 7881 rule is for. |
 | Speaker label shows a UUID | That account has no `display_name` on its profile row. |
+| Subtitle reads "Disconnected" on every channel after an app update | The `livekit-token` allowlist is stale. The default room was renamed `route-main` → `comm-1`; redeploy the function (step 6). |
+| Audio comes out of the earpiece, not the speaker | A Bluetooth or wired headset is connected — that wins on purpose. Disconnect it and the loudspeaker takes over. |
 | Connection drops when the app is backgrounded | Known and out of scope — there is no foreground service. |
 
 ## Teardown

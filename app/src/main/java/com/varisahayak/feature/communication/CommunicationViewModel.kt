@@ -3,7 +3,6 @@ package com.varisahayak.feature.communication
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.varisahayak.core.common.Outcome
-import com.varisahayak.core.walkie.WalkieController
 import com.varisahayak.domain.model.BroadcastingState
 import com.varisahayak.domain.model.CommunicationChannel
 import com.varisahayak.domain.model.CommunicationMessage
@@ -21,10 +20,29 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * The text side of comms.
+ *
+ * Deliberately does **not** touch [com.varisahayak.core.walkie.WalkieController]. It used
+ * to: selecting a channel here called `walkieController.join(channelId)` with an id from
+ * this screen's own roster ("all_hands", "police", "pandharpur_zone", …), which shares no
+ * values with WalkieChannels.ALL ("comm-1", "medical", "emergency"). That produced two
+ * failures and no way to see either:
+ *
+ *  - "medical" happened to collide, so opening the Medical Team *chat* silently moved the
+ *    volunteer's *radio* to the Medical net — off whatever channel they were monitoring,
+ *    with the only indication on a different screen.
+ *  - Every other id resolved to nothing, so join() returned early and the chat channel and
+ *    the radio channel disagreed with no error anywhere.
+ *
+ * The radio's channel is owned by the walkie widget and its picker, which is the one
+ * control that shows which channel you are actually on. Wiring voice into this screen means
+ * giving it a PTT control of its own and one roster shared with WalkieChannels — not a
+ * side effect on a chat tap.
+ */
 @HiltViewModel
 class CommunicationViewModel @Inject constructor(
     private val repository: CommunicationRepository,
-    private val walkieController: WalkieController
 ) : ViewModel() {
 
     private val _selectedChannelId = MutableStateFlow<String?>(null)
@@ -32,8 +50,6 @@ class CommunicationViewModel @Inject constructor(
 
     private val _broadcastingState = MutableStateFlow(BroadcastingState())
     val broadcastingState = _broadcastingState.asStateFlow()
-
-    val walkieState = walkieController.state
 
     // In-memory messages for the current session (disappears when ViewModel is cleared)
     private val _sessionMessages = MutableStateFlow<Map<String, List<CommunicationMessage>>>(emptyMap())
@@ -60,9 +76,7 @@ class CommunicationViewModel @Inject constructor(
         viewModelScope.launch {
             repository.observeChannels().collect { channels ->
                 if (_selectedChannelId.value == null && channels.isNotEmpty()) {
-                    val firstChannelId = channels.first().id
-                    _selectedChannelId.value = firstChannelId
-                    walkieController.join(firstChannelId)
+                    _selectedChannelId.value = channels.first().id
                 }
 
                 // Start collecting messages for each channel once
@@ -93,7 +107,6 @@ class CommunicationViewModel @Inject constructor(
     fun selectChannel(channelId: String) {
         _selectedChannelId.value = channelId
         _broadcastingState.update { it.copy(isEnabled = false) }
-        walkieController.join(channelId)
         viewModelScope.launch {
             repository.markAsRead(channelId)
         }
@@ -157,14 +170,4 @@ class CommunicationViewModel @Inject constructor(
         }
     }
 
-    fun startTransmit() {
-        _selectedChannelId.value?.let { channelId ->
-            walkieController.join(channelId)
-            walkieController.startTransmit()
-        }
-    }
-
-    fun stopTransmit() {
-        walkieController.stopTransmit()
-    }
 }

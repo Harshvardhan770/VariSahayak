@@ -213,5 +213,58 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
     }
 }
 
+/**
+ * 2 → 3: Plan 07.2 (Rewards).
+ *
+ * Adds the reward profile, XP transaction, and badge tables.
+ */
+val MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `reward_profiles` (
+                `userId` TEXT NOT NULL,
+                `totalXp` INTEGER NOT NULL,
+                `level` INTEGER NOT NULL,
+                `incidentsResolved` INTEGER NOT NULL,
+                `sosResponses` INTEGER NOT NULL,
+                `peopleAssisted` INTEGER NOT NULL,
+                `lostFoundAssisted` INTEGER NOT NULL,
+                `updatedAtEpochMillis` INTEGER NOT NULL,
+                PRIMARY KEY(`userId`)
+            )
+            """.trimIndent(),
+        )
+
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `xp_transactions` (
+                `transactionId` TEXT NOT NULL,
+                `userId` TEXT NOT NULL,
+                `amount` INTEGER NOT NULL,
+                `reason` TEXT NOT NULL,
+                `relatedEntityId` TEXT,
+                `occurredAtEpochMillis` INTEGER NOT NULL,
+                `synced` INTEGER NOT NULL,
+                PRIMARY KEY(`transactionId`)
+            )
+            """.trimIndent(),
+        )
+
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `user_badges` (
+                `badgeId` TEXT NOT NULL,
+                `userId` TEXT NOT NULL,
+                `badgeType` TEXT NOT NULL,
+                `unlockedAtEpochMillis` INTEGER NOT NULL,
+                `synced` INTEGER NOT NULL,
+                PRIMARY KEY(`badgeId`)
+            )
+            """.trimIndent(),
+        )
+    }
+}
+
 /** Every migration, in order. Registered in DatabaseModule. */
-val ALL_MIGRATIONS = arrayOf(MIGRATION_1_2)
+val ALL_MIGRATIONS = arrayOf(MIGRATION_1_2, MIGRATION_2_3)

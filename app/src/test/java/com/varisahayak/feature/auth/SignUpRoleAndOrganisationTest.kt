@@ -5,6 +5,8 @@ import com.varisahayak.core.common.Outcome
 import com.varisahayak.domain.model.UserRole
 import com.varisahayak.domain.repository.AuthRepository
 import com.varisahayak.domain.repository.AuthState
+import com.varisahayak.domain.repository.BulkSignUpResult
+import com.varisahayak.domain.repository.BulkUserRequest
 import com.varisahayak.domain.repository.SignUpResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -196,6 +198,14 @@ private class RecordingAuthRepository : AuthRepository {
         return failWith?.let { Outcome.Failure(it) }
             ?: Outcome.Success(SignUpResult.ConfirmationRequired(email))
     }
+
+    /**
+     * Not exercised by these tests, which are about the single-account sign-up form.
+     * Present because the interface requires it; returning an empty result rather than
+     * throwing keeps an accidental call from reading as a test failure in an unrelated suite.
+     */
+    override suspend fun bulkSignUp(users: List<BulkUserRequest>): BulkSignUpResult =
+        BulkSignUpResult(created = emptyList(), failed = emptyList())
 
     override suspend fun signOut(): Outcome<Unit> = Outcome.Success(Unit)
 

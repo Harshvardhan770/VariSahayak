@@ -130,7 +130,11 @@ val generateLivekitNetworkConfig = tasks.register("generateLivekitNetworkConfig"
             |    in the repository-root .env instead. Referenced only by src/debug/AndroidManifest.xml.
             |-->
             |<network-security-config>
-            |    <base-config cleartextTrafficPermitted="false" />
+            |    <base-config cleartextTrafficPermitted="false">
+            |        <trust-anchors>
+            |            <certificates src="system" />
+            |        </trust-anchors>
+            |    </base-config>
             |$exception
             |</network-security-config>
             |
