@@ -73,6 +73,7 @@ import java.io.File
 fun LostFoundScreen(
     modifier: Modifier = Modifier,
     onOpenMatches: () -> Unit = {},
+    onReportDetail: (String) -> Unit = {},
     viewModel: LostFoundViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -150,7 +151,10 @@ fun LostFoundScreen(
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(Dimens.SpaceSm)) {
                 items(reports, key = { it.clientId }) { report ->
-                    LostFoundRow(report = report)
+                    LostFoundRow(
+                        report = report,
+                        onClick = { onReportDetail(report.clientId) }
+                    )
                 }
             }
         }
@@ -202,8 +206,14 @@ private fun BoardFilter.labelRes(): Int = when (this) {
 }
 
 @Composable
-private fun LostFoundRow(report: LostFoundReport) {
-    Card(modifier = Modifier.fillMaxWidth()) {
+private fun LostFoundRow(
+    report: LostFoundReport,
+    onClick: () -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        onClick = onClick,
+    ) {
         Column(
             modifier = Modifier.padding(Dimens.SpaceMd),
             verticalArrangement = Arrangement.spacedBy(Dimens.SpaceXs),
@@ -302,6 +312,50 @@ private fun ReportDialog(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(Dimens.SpaceMd),
             ) {
+                // Which side of the board this report belongs to, changeable here.
+                //
+                // Every entry point fixes the kind before the dialog opens — the two board
+                // buttons, the dashboard's Found Person action, a QR scan. A volunteer who
+                // tapped the wrong one had no way back except cancelling and re-entering
+                // everything, and the form gave no sign the other side existed at all.
+                Row(horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceSm)) {
+                    LostFoundKind.entries.forEach { kind ->
+                        FilterChip(
+                            selected = state.form.kind == kind,
+                            onClick = {
+                                onChange { form ->
+                                    if (form.kind == kind) {
+                                        form
+                                    } else {
+                                        // Each side asks a question the other does not, and
+                                        // the answers are not interchangeable: a condition
+                                        // nobody assessed, or a guardian's phone number on a
+                                        // report about the guardian, would both be filed
+                                        // silently because the field is hidden by then.
+                                        form.copy(
+                                            kind = kind,
+                                            condition = null,
+                                            guardianName = "",
+                                            guardianPhone = "",
+                                        )
+                                    }
+                                }
+                            },
+                            label = {
+                                Text(
+                                    stringResource(
+                                        when (kind) {
+                                            LostFoundKind.LOST -> R.string.lostfound_side_lost
+                                            LostFoundKind.FOUND -> R.string.lostfound_side_found
+                                        },
+                                    ),
+                                )
+                            },
+                            modifier = Modifier.defaultMinSize(minHeight = Dimens.MinTouchTarget),
+                        )
+                    }
+                }
+
                 state.scannedLocation?.let { location ->
                     Text(
                         text = stringResource(R.string.lostfound_at_location, location.locationName),

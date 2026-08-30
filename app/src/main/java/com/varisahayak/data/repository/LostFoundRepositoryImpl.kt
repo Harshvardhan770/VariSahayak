@@ -6,6 +6,7 @@ import com.varisahayak.core.common.Clock
 import com.varisahayak.core.common.DispatcherProvider
 import com.varisahayak.core.common.Outcome
 import com.varisahayak.core.common.getOrNull
+import com.varisahayak.core.media.FaceSignature
 import com.varisahayak.core.media.PhotoCapture
 import com.varisahayak.data.local.dao.CustodyDao
 import com.varisahayak.data.local.dao.LostFoundDao
@@ -240,6 +241,14 @@ class LostFoundRepositoryImpl @Inject constructor(
         val path = report.photoLocalPath
             ?: return@withContext Outcome.Success(FaceMatchStatus.NOT_APPLICABLE)
 
+        // An umbrella has no face. Deciding it here rather than at the far end saves a
+        // base64 upload and a container cold start, and NOT_APPLICABLE is exactly what the
+        // board should show for a lost bag.
+        if (report.subjectType != LostFoundSubjectType.PERSON) {
+            recordFaceStatus(clientId, FaceMatchStatus.NOT_APPLICABLE)
+            return@withContext Outcome.Success(FaceMatchStatus.NOT_APPLICABLE)
+        }
+
         val bytes = PhotoCapture.readBytes(path)
         if (bytes == null || bytes.isEmpty()) {
             // The file went missing between filing and uploading. Recorded rather than
@@ -248,7 +257,19 @@ class LostFoundRepositoryImpl @Inject constructor(
             return@withContext Outcome.Success(FaceMatchStatus.INVALID_IMAGE)
         }
 
-        val result = try {
+        // The on-device pass runs first, always, and never touches the network. It is what
+        // makes this feature work on the route: no signal, no configured CV service, and a
+        // volunteer still gets a face verdict and face-ranked candidates in about a second.
+        // The server, when it is reachable, is an upgrade on this - not a prerequisite.
+        val local = FaceSignature.of(path)
+        var status = local.toFaceMatchStatus()
+
+        val result = if (report.serverId == null) {
+            // Not pushed yet. `process-face` looks the report up in PostgreSQL by client id
+            // under the caller's RLS, so this call could only spend a full base64 upload to
+            // earn a 404. The sync worker picks the report up again once the row exists.
+            null
+        } else try {
             // NO_WRAP: a base64 body with embedded newlines is not valid JSON string content
             // and the function would reject the whole request.
             val encoded = Base64.encodeToString(bytes, Base64.NO_WRAP)
@@ -264,21 +285,27 @@ class LostFoundRepositoryImpl @Inject constructor(
             throw cancellation
         } catch (error: Exception) {
             // Offline, timed out, function not deployed, a body that would not parse. All
-            // the same to a volunteer, and all retryable: the report stays PENDING rather
-            // than being marked bad. The message is logged, never shown — it can carry a
-            // URL or a serialisation detail that means nothing to the person holding
-            // the phone.
-            Log.d(TAG, "Face processing unavailable: ${error.message}")
+            // the same to a volunteer, and none of them fatal any more: the on-device
+            // verdict above already stands on its own. The message is logged, never shown -
+            // it can carry a URL or a serialisation detail that means nothing to the person
+            // holding the phone.
+            Log.d(TAG, "Remote face processing unavailable: ${error.message}")
             null
         }
 
-        // A null result is a call that did not complete, which is an outage. It must not go
-        // through fromWire(), whose null case is NOT_APPLICABLE — that reads as "no photo
-        // was supplied" and would permanently retire a perfectly good photograph.
-        val status = if (result == null) {
-            FaceMatchStatus.SERVICE_UNAVAILABLE
-        } else {
-            FaceMatchStatus.fromWire(result.status)
+        // Facenet beats a local binary pattern descriptor, so a READY from the server is
+        // taken over the local verdict. Anything else from the server only counts when this
+        // device could not read a face itself - a service outage, or a stricter server-side
+        // detector, must never retire a photograph this device successfully described.
+        val remote = result?.let { FaceMatchStatus.fromWire(it.status) }
+        if (remote == FaceMatchStatus.READY) {
+            status = FaceMatchStatus.READY
+        } else if (
+            remote != null &&
+            remote != FaceMatchStatus.SERVICE_UNAVAILABLE &&
+            local !is FaceSignature.Result.Ready
+        ) {
+            status = remote
         }
 
         // SERVICE_UNAVAILABLE is deliberately not written. It is transient, and persisting it
@@ -288,14 +315,12 @@ class LostFoundRepositoryImpl @Inject constructor(
         }
 
         // The whole point of the round trip. A face distance exists for exactly this moment
-        // — the server holds no per-pair result to fetch later — so the candidate pass runs
-        // here, while the numbers are in hand, and the engine finally scores on face as well
-        // as the other nine attributes.
-        val distances = result?.distanceTo.orEmpty()
-        if (distances.isNotEmpty()) {
-            runCatching { rankAndStore(clientId, distances) }
-                .onFailure { Log.d(TAG, "Face-weighted candidate pass skipped: ${it.message}") }
-        }
+        // - the server holds no per-pair result to fetch later - so the candidate pass runs
+        // here, while the numbers are in hand. Server distances are passed in; rankAndStore
+        // fills every remaining candidate from the on-device descriptors, so the engine
+        // scores on face as well as the other nine attributes either way.
+        runCatching { rankAndStore(clientId, result?.distanceTo.orEmpty()) }
+            .onFailure { Log.d(TAG, "Face-weighted candidate pass skipped: ${it.message}") }
 
         Outcome.Success(status)
     }
@@ -308,23 +333,23 @@ class LostFoundRepositoryImpl @Inject constructor(
      * killed before [submitPhotoForMatching] ran), SERVICE_UNAVAILABLE means it reached it
      * and the round trip failed. Neither is a bad photograph, and neither self-corrects.
      *
-     * Three deliberate limits:
+     * Unsynced rows are deliberately included. [submitPhotoForMatching] is local-first, so
+     * a report filed offline gets its descriptor and its face-ranked candidates here without
+     * ever reaching the network - and that report, filed by a volunteer with no signal, is
+     * precisely the one that most needs them. The remote leg is skipped for it until the
+     * sync worker has pushed the row.
      *
-     * 1. **Synced rows only.** `process-face` looks the report up in PostgreSQL by client
-     *    id under the caller's RLS. A row this device has not pushed yet is not there, so
-     *    the call would spend a full base64 upload to earn a 404. It waits for the push in
-     *    the same worker pass and is picked up on the next one.
-     * 2. **Bounded per pass.** The face service runs at concurrency 1 with no warm
+     * Two deliberate limits remain:
+     *
+     * 1. **Bounded per pass.** The face service runs at concurrency 1 with no warm
      *    instance, so a backlog dispatched at once would queue behind itself and blow the
      *    worker's time budget. A handful per pass drains steadily instead.
-     * 3. **Sequential.** Same reason. Firing these in parallel makes every one of them
+     * 2. **Sequential.** Same reason. Firing these in parallel makes every one of them
      *    slower on a service that handles one request at a time.
      */
     override suspend fun retryPendingFaceProcessing(): Outcome<Int> =
         withContext(dispatchers.io) {
             val awaiting = lostFoundDao.getAwaitingFaceProcessing()
-                // A report the server has never seen cannot be looked up by the function.
-                .filter { it.serverId != null && it.syncState == SyncState.SYNCED.name }
                 .take(MAX_FACE_RETRIES_PER_PASS)
 
             var settled = 0
@@ -367,6 +392,8 @@ class LostFoundRepositoryImpl @Inject constructor(
             // Replacing the photo invalidates any prior face verdict: the new image has to
             // be processed before it can contribute a face signal again.
             if (next.photoLocalPath != existing.photoLocalPath && next.photoLocalPath != null) {
+                // The descriptor cached beside the old file describes a different face.
+                FaceSignature.forget(existing.photoLocalPath)
                 next.copy(faceMatchStatus = FaceMatchStatus.PENDING)
             } else {
                 next
@@ -502,7 +529,13 @@ class LostFoundRepositoryImpl @Inject constructor(
             val pool = lostFoundDao.getActiveByKind(subject.kind.opposite.wireName)
                 .map { it.toDomain() }
 
-            val ranked = matchingEngine.rank(subject, pool, faceDistances = faceDistances)
+            // On-device distances underneath, server distances on top. Offline or with the
+            // CV service unconfigured the server map is empty and the local one carries the
+            // whole face signal; when both exist the server's Facenet distance wins for the
+            // candidates it covered and the local pass fills in the rest.
+            val faces = localFaceDistances(subject, pool) + faceDistances
+
+            val ranked = matchingEngine.rank(subject, pool, faceDistances = faces)
 
             val now = clock.nowEpochMillis()
             val created = mutableListOf<LostFoundMatchEntity>()
@@ -553,6 +586,43 @@ class LostFoundRepositoryImpl @Inject constructor(
 
             Outcome.Success(created.map { it.toDomain() })
         }
+
+    /**
+     * Compares this report's photograph against every photograph on the opposite side,
+     * entirely on this device.
+     *
+     * Only reports whose photograph is on this phone can take part, which in practice is
+     * the case that matters: a volunteer files the Found report for the child standing next
+     * to them, and the Lost report was filed on the same handset at the help point. Anything
+     * without a local descriptor simply contributes no face signal - which the engine scores
+     * as "cannot compare", never as a mismatch, so those candidates still rank on the other
+     * nine attributes.
+     *
+     * Never throws. A descriptor that cannot be computed is an absent signal, not an error,
+     * and it must not take the whole ranking pass down with it.
+     */
+    private fun localFaceDistances(
+        subject: LostFoundReport,
+        pool: List<LostFoundReport>,
+    ): Map<String, Double> {
+        if (subject.subjectType != LostFoundSubjectType.PERSON) return emptyMap()
+
+        val mine = runCatching {
+            (FaceSignature.of(subject.photoLocalPath) as? FaceSignature.Result.Ready)?.descriptor
+        }.getOrNull() ?: return emptyMap()
+
+        return pool.mapNotNull { candidate ->
+            if (candidate.clientId == subject.clientId) return@mapNotNull null
+            if (candidate.subjectType != LostFoundSubjectType.PERSON) return@mapNotNull null
+
+            val theirs = runCatching {
+                (FaceSignature.of(candidate.photoLocalPath) as? FaceSignature.Result.Ready)
+                    ?.descriptor
+            }.getOrNull() ?: return@mapNotNull null
+
+            candidate.clientId to FaceSignature.distance(mine, theirs)
+        }.toMap()
+    }
 
     override suspend fun reviewMatch(
         matchClientId: String,
@@ -799,3 +869,19 @@ private data class FaceProcessingRequest(
     val image: String,
     val action: String = "enrol_and_match",
 )
+
+/**
+ * The on-device verdict in the vocabulary the rest of the system already speaks.
+ *
+ * [FaceSignature.Result.Unreadable] becomes SERVICE_UNAVAILABLE rather than INVALID_IMAGE on
+ * purpose. It means *this device* could not decode the file - an unusual codec, a bitmap too
+ * large for the heap - and that is a retryable local condition, not proof the photograph is
+ * bad. SERVICE_UNAVAILABLE is never persisted, so the report stays PENDING and the server
+ * still gets its chance to read the image.
+ */
+private fun FaceSignature.Result.toFaceMatchStatus(): FaceMatchStatus = when (this) {
+    is FaceSignature.Result.Ready -> FaceMatchStatus.READY
+    FaceSignature.Result.NoFace -> FaceMatchStatus.NO_FACE
+    FaceSignature.Result.MultipleFaces -> FaceMatchStatus.MULTIPLE_FACES
+    FaceSignature.Result.Unreadable -> FaceMatchStatus.SERVICE_UNAVAILABLE
+}

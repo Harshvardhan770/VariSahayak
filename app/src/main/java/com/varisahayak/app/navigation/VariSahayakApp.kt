@@ -72,6 +72,7 @@ import com.varisahayak.feature.dashboard.VolunteerDashboardScreen
 import com.varisahayak.feature.incidents.IncidentDetailScreen
 import com.varisahayak.feature.incidents.IncidentListScreen
 import com.varisahayak.feature.incidents.ReportIncidentScreen
+import com.varisahayak.feature.lostfound.LostFoundDetailScreen
 import com.varisahayak.feature.lostfound.LostFoundScreen
 import com.varisahayak.feature.lostfound.MatchReviewScreen
 import com.varisahayak.feature.map.IncidentMapScreen
@@ -388,6 +389,7 @@ private fun VariNavHost(
         onScan = { navController.navigate(Destination.QrScanner) },
         onMap = { navController.navigate(Destination.IncidentMap) },
         onLostFound = { navController.navigate(Destination.LostAndFound()) },
+        onReportFound = { navController.navigate(Destination.LostAndFound(kind = "FOUND")) },
         onDetail = { clientId -> navController.navigate(Destination.IncidentDetail(clientId)) },
         onToggleWalkie = onToggleWalkie,
         // Replaced by each screen with its own confirmation flow; never fires as-is.
@@ -540,6 +542,15 @@ private fun VariNavHost(
         composable<Destination.LostAndFound> {
             LostFoundScreen(
                 onOpenMatches = { navController.navigate(Destination.MatchReview) },
+                onReportDetail = { clientId ->
+                    navController.navigate(Destination.LostFoundDetail(clientId))
+                },
+            )
+        }
+
+        composable<Destination.LostFoundDetail> {
+            LostFoundDetailScreen(
+                onBack = { navController.popBackStack() }
             )
         }
 

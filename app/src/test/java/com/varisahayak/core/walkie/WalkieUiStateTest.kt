@@ -94,18 +94,26 @@ class WalkieUiStateTest {
     // -----------------------------------------------------------------------------------
 
     @Test
-    fun `all three channels are offered and route-main is the default`() {
-        assertEquals(listOf("route-main", "medical", "emergency"), WalkieChannels.ALL.map { it.id })
-        assertEquals("route-main", WalkieChannels.DEFAULT.id)
+    fun `all three channels are offered and comm-1 is the default`() {
+        // These ids are LiveKit room names and are also the allowlist in the
+        // livekit-token edge function. Changing one without the other does not fail
+        // loudly — it mints no token, or mints one for a room nobody else is in.
+        assertEquals(listOf("comm-1", "medical", "emergency"), WalkieChannels.ALL.map { it.id })
+        assertEquals("comm-1", WalkieChannels.DEFAULT.id)
+        assertEquals("Comm 1", WalkieChannels.DEFAULT.name)
         assertTrue(WalkieChannels.ALL.first { it.id == "emergency" }.isEmergency)
     }
 
     @Test
     fun `unknown channel ids resolve to nothing rather than to a default`() {
         // join() must refuse an id it does not know instead of quietly putting the
-        // volunteer on Route Net: two devices that disagree about which room they are in
+        // volunteer on Comm 1: two devices that disagree about which room they are in
         // hear silence and have no way to tell that is what happened.
         assertEquals(null, WalkieChannels.byId("dispatch"))
-        assertEquals(WalkieChannels.DEFAULT, WalkieChannels.byId("route-main"))
+        // The Communication screen's chat roster, which is a different list entirely.
+        // It must not resolve here — it used to be passed straight to join().
+        assertEquals(null, WalkieChannels.byId("all_hands"))
+        assertEquals(null, WalkieChannels.byId("route-main"))
+        assertEquals(WalkieChannels.DEFAULT, WalkieChannels.byId("comm-1"))
     }
 }

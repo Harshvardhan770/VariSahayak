@@ -15,8 +15,13 @@ import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.functions.functions
 import io.ktor.client.call.body
 import io.ktor.client.request.setBody
+import com.twilio.audioswitch.AudioDevice
+import io.livekit.android.AudioOptions
+import io.livekit.android.AudioType
 import io.livekit.android.LiveKit
+import io.livekit.android.LiveKitOverrides
 import io.livekit.android.RoomOptions
+import io.livekit.android.audio.AudioSwitchHandler
 import io.livekit.android.events.RoomEvent
 import io.livekit.android.events.collect
 import io.livekit.android.room.Room
@@ -278,6 +283,7 @@ class LiveKitWalkieController @Inject constructor(
                             typingNoiseDetection = false,
                         ),
                     ),
+                    overrides = LiveKitOverrides(audioOptions = radioAudioOptions()),
                 )
                 room = newRoom
 
@@ -394,6 +400,40 @@ class LiveKitWalkieController @Inject constructor(
         runCatching { existing.release() }
         stopLevelFeed()
     }
+
+    /**
+     * Where the far end comes out.
+     *
+     * The one setting that decides whether this feature works at all: a radio whose
+     * received audio goes to the earpiece is a radio nobody hears, because the phone is in
+     * a hand or a vest pocket and not against an ear. The loudspeaker is named ahead of the
+     * earpiece so the fallback when no headset is attached is the speaker, never the
+     * receiver.
+     *
+     * A headset still wins when one is present — a volunteer who has plugged in or paired
+     * one has said where they want the audio, and blasting the channel out of the
+     * loudspeaker in a temple queue would be worse than useless.
+     *
+     * The list is stated rather than left to the SDK. It matches livekit-android 2.28's
+     * default today, which is exactly why it is worth pinning: this is not a preference,
+     * it is the difference between a working radio and a silent one, and it should not be
+     * able to change underneath us on a dependency bump.
+     *
+     * [AudioType.CallAudioType] puts the device in MODE_IN_COMMUNICATION, so the volume
+     * keys move the in-call stream and the hardware echo canceller is applied to the
+     * capture — the same reason MODIFY_AUDIO_SETTINGS is in the manifest.
+     */
+    private fun radioAudioOptions(): AudioOptions = AudioOptions(
+        audioOutputType = AudioType.CallAudioType(),
+        audioHandler = AudioSwitchHandler(context.applicationContext).apply {
+            preferredDeviceList = listOf(
+                AudioDevice.BluetoothHeadset::class.java,
+                AudioDevice.WiredHeadset::class.java,
+                AudioDevice.Speakerphone::class.java,
+                AudioDevice.Earpiece::class.java,
+            )
+        },
+    )
 
     // -----------------------------------------------------------------------------------
     // Push to talk

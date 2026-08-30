@@ -28,8 +28,13 @@ import { withSupabase } from 'npm:@supabase/server@^1'
  * hear nothing, which is exactly the failure a radio must never have.
  *
  * Must stay in step with WalkieChannels.ALL in the Android app.
+ *
+ * 'route-main' is the old id of what is now 'comm-1'. It is kept signable so that a phone
+ * still running a pre-rename APK is not dropped off the radio the moment this function is
+ * redeployed — a stale build losing its channel is a silent failure in the field, and the
+ * cost of one extra string here is nothing. Delete it once every device has been updated.
  */
-const CHANNELS = ['route-main', 'medical', 'emergency'] as const
+const CHANNELS = ['comm-1', 'medical', 'emergency', 'route-main'] as const
 
 /**
  * Ten minutes.
