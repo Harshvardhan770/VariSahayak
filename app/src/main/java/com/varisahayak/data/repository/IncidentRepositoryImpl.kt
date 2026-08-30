@@ -8,6 +8,7 @@ import com.varisahayak.data.local.dao.IncidentDao
 import com.varisahayak.data.local.dao.IncidentEventDao
 import com.varisahayak.data.local.entity.IncidentEntity
 import com.varisahayak.data.local.entity.IncidentEventEntity
+import com.varisahayak.data.remote.dto.IncidentEventDto
 import com.varisahayak.data.local.entity.IncidentEventType
 import com.varisahayak.data.local.entity.toDomain
 import com.varisahayak.data.remote.dto.IncidentDto
@@ -18,7 +19,9 @@ import com.varisahayak.domain.model.GeoPoint
 import com.varisahayak.domain.model.Incident
 import com.varisahayak.domain.model.IncidentCategory
 import com.varisahayak.domain.model.IncidentStateMachine
+import com.varisahayak.domain.model.IncidentEventKind
 import com.varisahayak.domain.model.IncidentStatus
+import com.varisahayak.domain.model.TimelineEvent
 import com.varisahayak.domain.model.SyncState
 import com.varisahayak.domain.repository.IncidentRepository
 import com.varisahayak.domain.repository.SyncSummary
@@ -27,6 +30,7 @@ import com.varisahayak.domain.usecase.PriorityInput
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.query.Order
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -269,6 +273,52 @@ class IncidentRepositoryImpl @Inject constructor(
         }
     }
 
+    override fun observeTimeline(incidentClientId: String): Flow<List<TimelineEvent>> =
+        incidentEventDao.observeForIncident(incidentClientId)
+            .map { rows -> rows.map { it.toTimelineEvent() } }
+
+    /**
+     * Pulls one incident's server-side events.
+     *
+     * Scoped to a single incident on purpose. Most of this trail is written by database
+     * triggers — `assign_incident` records ASSIGNED and ASSIGNMENT_FAILED, the status
+     * triggers record transitions — so a device that only ever wrote its own events has
+     * never seen the half of the story that matters most to a command user.
+     *
+     * RLS decides what comes back: the read runs under the caller's session, and the
+     * policy on incident_events admits command users and the incident's own participants
+     * and nobody else. There is no client-side permission check here because there does
+     * not need to be one.
+     */
+    override suspend fun refreshTimeline(incidentClientId: String): Outcome<Unit> =
+        withContext(dispatchers.io) {
+            val serverId = incidentDao.getByClientId(incidentClientId)?.serverId
+                // Never synced, so the server has nothing to add. The local events are
+                // already the complete story and this is a success, not a failure.
+                ?: return@withContext Outcome.Success(Unit)
+
+            try {
+                val dtos = supabase.from("incident_events")
+                    .select {
+                        filter { eq("incident_id", serverId) }
+                        order("occurred_at", Order.ASCENDING)
+                    }
+                    .decodeList<IncidentEventDto>()
+
+                incidentEventDao.upsertAll(
+                    dtos.map { it.toEntity(incidentClientId, serverId) },
+                )
+                Outcome.Success(Unit)
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (error: Exception) {
+                // The local trail still renders. A timeline missing its server rows is a
+                // degraded view, never a blank screen.
+                android.util.Log.d("IncidentRepository", "Timeline refresh failed: ${error.message}")
+                Outcome.Failure(AppError.Network(cause = error))
+            }
+        }
+
     override suspend fun findClientIdByServerId(serverId: String): String? =
         withContext(dispatchers.io) {
             incidentDao.getByServerId(serverId)?.clientId
@@ -311,3 +361,41 @@ class IncidentRepositoryImpl @Inject constructor(
             "That is not a valid next step for this incident."
     }
 }
+
+/** Local row -> domain. The raw type is kept so an unknown event still renders. */
+private fun IncidentEventEntity.toTimelineEvent(): TimelineEvent = TimelineEvent(
+    eventId = eventId,
+    incidentClientId = incidentClientId,
+    type = IncidentEventKind.fromWire(type, toValue),
+    rawType = type,
+    actorId = actorId,
+    fromValue = fromValue,
+    toValue = toValue,
+    note = note,
+    occurredAtEpochMillis = occurredAtEpochMillis,
+    synced = synced,
+)
+
+/**
+ * Server row -> local row.
+ *
+ * `synced = true`, because it came from the server by definition. The event id is the
+ * server's, so a row pulled twice upserts onto itself instead of duplicating the timeline.
+ */
+private fun IncidentEventDto.toEntity(
+    incidentClientId: String,
+    incidentServerId: String,
+): IncidentEventEntity = IncidentEventEntity(
+    eventId = id,
+    incidentClientId = incidentClientId,
+    incidentServerId = incidentServerId,
+    type = type,
+    actorId = actorId,
+    fromValue = fromValue,
+    toValue = toValue,
+    note = note,
+    // Parsed defensively: one unreadable timestamp must not abort the whole timeline.
+    occurredAtEpochMillis = runCatching { Instant.parse(occurredAt).toEpochMilli() }
+        .getOrDefault(0L),
+    synced = true,
+)

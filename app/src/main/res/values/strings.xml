@@ -302,6 +302,14 @@
     <string name="walkie_show">Show radio</string>
     <string name="walkie_hide">Hide radio</string>
     <string name="walkie_speaking">%1$s speaking</string>
+    <!-- Mics overlap, so more than one person can be on the air at once. First name in
+         full, the rest as a count: three names do not fit this widget's single line. -->
+    <plurals name="walkie_speaking_more">
+        <item quantity="one">%1$s + %2$d other</item>
+        <item quantity="other">%1$s + %2$d others</item>
+    </plurals>
+    <string name="walkie_on_air_hearing">On air · %1$s</string>
+    <string name="walkie_not_configured">Radio not configured</string>
     <string name="walkie_on_air">On air</string>
     <string name="walkie_disconnected">Disconnected</string>
     <string name="walkie_connecting">Connecting…</string>
@@ -323,6 +331,8 @@
     <string name="notification_assignment_body">An incident has been assigned to you.</string>
     <string name="notification_escalation_title">Incident escalated</string>
     <string name="notification_escalation_body">An incident needs attention. Open for details.</string>
+    <string name="notification_incident_title">New incident reported</string>
+    <string name="notification_incident_body">An incident in your area needs a responder. Open for details.</string>
     <string name="notification_status_title">Incident updated</string>
     <string name="notification_status_body">The status of an incident has changed.</string>
     <string name="notification_announcement_title">Announcement</string>

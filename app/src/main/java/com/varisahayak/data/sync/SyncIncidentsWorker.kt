@@ -47,6 +47,16 @@ class SyncIncidentsWorker @AssistedInject constructor(
         // offline would sync it successfully and never learn that it matched somebody.
         lostFoundRepository.refreshFromServer()
 
+        // Photographs that never got a verdict get another go, now that the rows behind
+        // them have been pushed and a network is known to be present. Deliberately after
+        // the refresh: a verdict another device already earned lands first, so this only
+        // spends an upload on reports that genuinely still need one.
+        //
+        // Never affects the worker's result. A face signal is one weight of ten and the
+        // report is fully matchable without it — retrying sync because face matching is
+        // down would turn a CV outage into a stalled queue for incidents too.
+        lostFoundRepository.retryPendingFaceProcessing()
+
         val incidentsFailed = (incidents as? Outcome.Success)?.data?.hasFailures ?: true
         val lostFoundFailed = lostFound is Outcome.Failure
 

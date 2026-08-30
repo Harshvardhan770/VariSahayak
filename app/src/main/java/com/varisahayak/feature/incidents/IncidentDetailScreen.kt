@@ -39,6 +39,9 @@ fun IncidentDetailScreen(
     val incident by viewModel.incident.collectAsStateWithLifecycle()
     val actions by viewModel.availableActions.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val timeline by viewModel.timeline.collectAsStateWithLifecycle()
+    val metrics by viewModel.metrics.collectAsStateWithLifecycle()
+    val capabilities by viewModel.capabilities.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     val current = incident
@@ -98,6 +101,18 @@ fun IncidentDetailScreen(
                     ?: stringResource(R.string.state_error),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.error,
+            )
+        }
+
+        // Command and admin only. A volunteer looking at their own report has no use for
+        // match scores and responder workloads, and canSeeAreaWideIncidents is the existing
+        // capability that already means "this user runs operations". RLS enforces the same
+        // boundary server-side: incident_events admits command users and participants only.
+        if (capabilities.canSeeAreaWideIncidents) {
+            IncidentTimelineSection(
+                incident = current,
+                events = timeline,
+                metrics = metrics,
             )
         }
 

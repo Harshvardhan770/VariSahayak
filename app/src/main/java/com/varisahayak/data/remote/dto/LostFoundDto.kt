@@ -124,10 +124,24 @@ data class LostFoundMatchDto(
  * Carries a *status*, never a vector. [distanceTo] is the only numeric result a client
  * ever sees, and it is a ranking indicator against a specific counterpart — not something
  * from which an embedding could be reconstructed.
+ *
+ * The function normalises everything the deployed Python service can return into these
+ * fields, so nothing here mirrors that service's own response shape. Every property has a
+ * default: a field the function stops sending must degrade to "no signal", never to a
+ * deserialisation failure that would cost the volunteer their verdict.
  */
 @Serializable
 data class FaceProcessingDto(
     @SerialName("status") val status: String,
+    /** True only for READY. Every other outcome is a report the volunteer still keeps. */
+    @SerialName("ok") val ok: Boolean = false,
     @SerialName("message") val message: String? = null,
+    /** Cosine distance keyed by the *opposite* side's report client id. */
     @SerialName("distances") val distanceTo: Map<String, Double> = emptyMap(),
+    /** True only when an embedding was stored and this report can contribute a signal. */
+    @SerialName("face_available") val faceAvailable: Boolean = false,
+    /** Faces the detector found. Distinguishes "no face" from "a crowd" for the wording. */
+    @SerialName("faces_detected") val facesDetected: Int = 0,
+    /** How many enrolled records the search actually ran against. Diagnostics only. */
+    @SerialName("candidate_count") val candidateCount: Int = 0,
 )

@@ -61,6 +61,20 @@ interface LostFoundRepository {
      */
     suspend fun submitPhotoForMatching(clientId: String): Outcome<FaceMatchStatus>
 
+    /**
+     * Re-attempts face processing for reports still waiting on it.
+     *
+     * This is what makes the promise in this interface's header true. A report filed in a
+     * dead spot is stored PENDING, and one whose processing hit an outage is left
+     * SERVICE_UNAVAILABLE rather than being marked bad — but without something to come back
+     * for them, both stay that way forever and the photograph never contributes a face
+     * signal at all.
+     *
+     * Called from the sync worker, which already runs on a network constraint with backoff.
+     * Returns how many reports were carried to a settled verdict this pass.
+     */
+    suspend fun retryPendingFaceProcessing(): Outcome<Int>
+
     /** Corrects details on an existing report — including replacing the photo. */
     suspend fun update(
         clientId: String,

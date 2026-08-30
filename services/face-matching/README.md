@@ -1,5 +1,22 @@
 # VARI Sahayak — Lost & Found face-matching service
 
+> [!IMPORTANT]
+> **This is not the deployed service.** The Lost & Found face matching that VARI Sahayak
+> actually runs against is
+> [atharvrahate296/FaceMatch_VariSahayak](https://github.com/atharvrahate296/FaceMatch_VariSahayak),
+> and `supabase/functions/process-face` is written against *that* contract.
+>
+> The two are different implementations with **different routes**. This one serves
+> `/enroll`, `/enrol`, `/compare`, `/recognize`, `/detect_faces` and `/persons`; the
+> deployed one serves `/v1/face/register`, `/v1/face/match` and `/v1/face/detect`. Verified
+> against the live host, the routes in this README return HTTP 500, and its
+> `X-Service-Token` header returns 401 — the deployed build reads `X-API-Key` only.
+>
+> Keep this directory for reference or for local experiments. **Do not wire anything new to
+> it, and do not use `docs/API.md` as the integration contract** — the deployed service's
+> `openapi.yaml` is the contract. If this implementation is ever promoted to production,
+> update `supabase/functions/process-face/index.ts` in the same change.
+
 An API-only Python service that turns photographs into face embeddings, stores them in
 MongoDB, and ranks a queried face against the ones already enrolled. It exists so a
 volunteer holding a found child at a help point can be shown the handful of open "missing"

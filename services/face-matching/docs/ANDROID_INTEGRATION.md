@@ -1,7 +1,16 @@
 # Android integration
 
-How the VARI Sahayak Android app reaches face matching — and why it does not reach this
+How the VARI Sahayak Android app reaches face matching — and why it does not reach the face
 service directly.
+
+> [!IMPORTANT]
+> The **shape** of the path below is correct and current: app → Supabase edge function →
+> face service → Mongo, with the key never leaving the server.
+>
+> The **route and secret names** below described *this* directory's service, which is not
+> what is deployed. See the banner in [../README.md](../README.md). The deployed contract is
+> `/v1/face/register`, `/v1/face/match`, `/v1/face/detect`, authenticated with `X-API-Key`,
+> configured as `FACE_API_URL` / `FACE_API_KEY`. This file has been corrected to match.
 
 ---
 
@@ -57,15 +66,22 @@ The service URL is configured **once, on the Supabase side**, because Supabase i
 thing that calls it:
 
 ```bash
-supabase secrets set FACE_SERVICE_URL="http://<face-service-host>:8080"
-supabase secrets set FACE_SERVICE_TOKEN="<the same value as FACE_API_KEY>"
+supabase secrets set FACE_API_URL="http://<face-service-host>"
+supabase secrets set FACE_API_KEY="<the same value as the service's FACE_API_KEY>"
 ```
 
-Note there is no trailing slash: the edge function appends paths like `/enroll` directly, so
-a trailing slash would produce `//enroll`.
+The names match what the deployed service calls them, so one name means one thing on both
+sides of the hop.
 
-`FACE_SERVICE_TOKEN` is sent as `X-Service-Token`, which this service still accepts
-alongside `X-API-Key`. You can rename the secret to match at any time; both work.
+A trailing slash is tolerated — the edge function strips it before appending a route — but
+leave it off anyway. The routes it appends are `/v1/face/register`, `/v1/face/match` and
+`/v1/face/detect`.
+
+The older `FACE_SERVICE_URL` / `FACE_SERVICE_TOKEN` are still read as a fallback so an
+existing deployment does not break on upgrade, but they are deprecated and should be
+removed once the new names are set. `FACE_SERVICE_TOKEN` was sent as an `X-Service-Token`
+header; the deployed service answers that with `401 {"error":"Unauthorized"}`, because it
+reads `X-API-Key` and nothing else.
 
 ### If you do add an app-side URL
 
@@ -75,7 +91,7 @@ gitignored `.env` at the root, through `secret()` in `app/build.gradle.kts`:
 
 ```properties
 # .env at the repository root — gitignored, never committed
-FACE_API_URL=http://<face-service-host>:8080/
+FACE_API_URL=http://<face-service-host>
 ```
 
 ```kotlin
@@ -192,7 +208,7 @@ Then end to end, from a device or emulator signed in as a volunteer: file a Lost
 report with a photograph and confirm `lost_found_items.face_match_status` moves from
 `PENDING` to `READY`. If it stays `PENDING`, check in this order —
 
-1. `supabase functions logs process-face` — is `FACE_SERVICE_URL` set, and is the call
+1. `supabase functions logs process-face` — is `FACE_API_URL` set, and is the call
    reaching the VM at all?
 2. `docker compose logs face-matching` on the VM — did a request arrive? A `401` means the
    two secrets disagree.

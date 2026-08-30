@@ -438,3 +438,13 @@ entrypoint = "./functions/resolve-location/index.ts"
 enabled = true
 verify_jwt = true
 entrypoint = "./functions/process-face/index.ts"
+
+# Mints LiveKit join tokens for the walkie-talkie. verify_jwt = true is the whole access
+# model: the LiveKit API secret lives only in this function's environment, and the platform
+# rejects an unauthenticated call before that secret is ever read. Any signed-in user may
+# join any channel — there is no role gate on a radio — but nobody can mint a token without
+# a Supabase session, and no token grants room administration or recording.
+[functions.livekit-token]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/livekit-token/index.ts"
