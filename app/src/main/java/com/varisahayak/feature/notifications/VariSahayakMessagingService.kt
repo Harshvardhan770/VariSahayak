@@ -83,7 +83,13 @@ class VariSahayakMessagingService : FirebaseMessagingService() {
             .setContentText(getString(content.bodyRes))
             .setPriority(content.priority)
             .setCategory(content.category)
-            .setAutoCancel(true)
+            // An SOS is sticky: ongoing blocks the swipe, and not auto-cancelling means
+            // opening it does not clear it either. It comes down when the incident reaches
+            // RESOLVED or CANCELLED and LocalAlertNotifier drops it, not when a responder
+            // brushes the shade. Everything else stays dismissible — a queue a responder
+            // cannot clear is a queue they stop reading.
+            .setOngoing(content.sticky)
+            .setAutoCancel(!content.sticky)
             .setContentIntent(openIntent(incidentId, type))
             .build()
 
@@ -92,8 +98,12 @@ class VariSahayakMessagingService : FirebaseMessagingService() {
         // calls anyway. A suppressed notification is a lost convenience, never lost data:
         // the notifications table holds the authoritative record.
         try {
+            // Namespaced to match LocalAlertNotifier, which is what clears a sticky SOS
+            // once the incident is resolved. A push and a local announcement for the same
+            // emergency must land on one notification id, or the push copy is left on
+            // screen with nothing able to take it down.
             NotificationManagerCompat.from(this)
-                .notify(incidentId?.hashCode() ?: type.hashCode(), notification)
+                .notify(notificationId(type, incidentId), notification)
         } catch (denied: SecurityException) {
             Log.d(TAG, "Notification suppressed: permission revoked")
         }
@@ -140,6 +150,19 @@ class VariSahayakMessagingService : FirebaseMessagingService() {
         return NotificationManagerCompat.from(this).areNotificationsEnabled()
     }
 
+    /**
+     * Matches `LocalAlertNotifier`'s scheme so the two paths address the same notification.
+     *
+     * The push carries a *server* id while the local path holds a client id, so these only
+     * coincide once the deep-link bus has resolved one to the other. Until they do, the
+     * worst case is two notifications for one incident — noisy, but never an undismissable
+     * SOS, which is what a shared id with a mismatched namespace would produce.
+     */
+    private fun notificationId(type: String, incidentId: String?): Int {
+        val key = incidentId ?: return type.hashCode()
+        return if (type == TYPE_SOS) "SOS:$key".hashCode() else "INCIDENT:$key".hashCode()
+    }
+
     private fun channelFor(type: String): String = when (type) {
         TYPE_SOS -> getString(R.string.notification_channel_id_sos)
         TYPE_ASSIGNMENT -> getString(R.string.notification_channel_id_assignment)
@@ -154,6 +177,7 @@ class VariSahayakMessagingService : FirebaseMessagingService() {
             R.string.notification_sos_body,
             NotificationCompat.PRIORITY_MAX,
             NotificationCompat.CATEGORY_ALARM,
+            sticky = true,
         )
 
         TYPE_ASSIGNMENT -> NotificationContent(
@@ -190,6 +214,8 @@ class VariSahayakMessagingService : FirebaseMessagingService() {
         val bodyRes: Int,
         val priority: Int,
         val category: String,
+        /** Posted ongoing and never auto-cancelled. SOS only. */
+        val sticky: Boolean = false,
     )
 
     private companion object {

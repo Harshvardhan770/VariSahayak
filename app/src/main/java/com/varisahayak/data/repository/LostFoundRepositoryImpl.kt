@@ -5,6 +5,7 @@ import com.varisahayak.core.common.AppError
 import com.varisahayak.core.common.Clock
 import com.varisahayak.core.common.DispatcherProvider
 import com.varisahayak.core.common.Outcome
+import com.varisahayak.core.common.getOrNull
 import com.varisahayak.core.media.PhotoCapture
 import com.varisahayak.data.local.dao.CustodyDao
 import com.varisahayak.data.local.dao.LostFoundDao
@@ -247,25 +248,37 @@ class LostFoundRepositoryImpl @Inject constructor(
             return@withContext Outcome.Success(FaceMatchStatus.INVALID_IMAGE)
         }
 
-        val status = try {
+        val result = try {
             // NO_WRAP: a base64 body with embedded newlines is not valid JSON string content
             // and the function would reject the whole request.
             val encoded = Base64.encodeToString(bytes, Base64.NO_WRAP)
 
             val response = supabase.functions.invoke("process-face") {
                 setBody(
-                    FaceEnrolRequest(report_client_id = clientId, image = encoded),
+                    FaceProcessingRequest(report_client_id = clientId, image = encoded),
                 )
             }
 
-            FaceMatchStatus.fromWire(response.body<FaceProcessingDto>().status)
+            response.body<FaceProcessingDto>()
         } catch (cancellation: CancellationException) {
             throw cancellation
         } catch (error: Exception) {
-            // Offline, timed out, function not deployed. All the same to a volunteer, and
-            // all retryable: the report stays PENDING rather than being marked bad.
+            // Offline, timed out, function not deployed, a body that would not parse. All
+            // the same to a volunteer, and all retryable: the report stays PENDING rather
+            // than being marked bad. The message is logged, never shown — it can carry a
+            // URL or a serialisation detail that means nothing to the person holding
+            // the phone.
             Log.d(TAG, "Face processing unavailable: ${error.message}")
+            null
+        }
+
+        // A null result is a call that did not complete, which is an outage. It must not go
+        // through fromWire(), whose null case is NOT_APPLICABLE — that reads as "no photo
+        // was supplied" and would permanently retire a perfectly good photograph.
+        val status = if (result == null) {
             FaceMatchStatus.SERVICE_UNAVAILABLE
+        } else {
+            FaceMatchStatus.fromWire(result.status)
         }
 
         // SERVICE_UNAVAILABLE is deliberately not written. It is transient, and persisting it
@@ -274,8 +287,62 @@ class LostFoundRepositoryImpl @Inject constructor(
             recordFaceStatus(clientId, status)
         }
 
+        // The whole point of the round trip. A face distance exists for exactly this moment
+        // — the server holds no per-pair result to fetch later — so the candidate pass runs
+        // here, while the numbers are in hand, and the engine finally scores on face as well
+        // as the other nine attributes.
+        val distances = result?.distanceTo.orEmpty()
+        if (distances.isNotEmpty()) {
+            runCatching { rankAndStore(clientId, distances) }
+                .onFailure { Log.d(TAG, "Face-weighted candidate pass skipped: ${it.message}") }
+        }
+
         Outcome.Success(status)
     }
+
+    /**
+     * Re-attempts face processing for every report still waiting on it.
+     *
+     * Two states qualify, and they are genuinely different failures with the same fix:
+     * PENDING means the photograph never reached the service (filed offline, or the app was
+     * killed before [submitPhotoForMatching] ran), SERVICE_UNAVAILABLE means it reached it
+     * and the round trip failed. Neither is a bad photograph, and neither self-corrects.
+     *
+     * Three deliberate limits:
+     *
+     * 1. **Synced rows only.** `process-face` looks the report up in PostgreSQL by client
+     *    id under the caller's RLS. A row this device has not pushed yet is not there, so
+     *    the call would spend a full base64 upload to earn a 404. It waits for the push in
+     *    the same worker pass and is picked up on the next one.
+     * 2. **Bounded per pass.** The face service runs at concurrency 1 with no warm
+     *    instance, so a backlog dispatched at once would queue behind itself and blow the
+     *    worker's time budget. A handful per pass drains steadily instead.
+     * 3. **Sequential.** Same reason. Firing these in parallel makes every one of them
+     *    slower on a service that handles one request at a time.
+     */
+    override suspend fun retryPendingFaceProcessing(): Outcome<Int> =
+        withContext(dispatchers.io) {
+            val awaiting = lostFoundDao.getAwaitingFaceProcessing()
+                // A report the server has never seen cannot be looked up by the function.
+                .filter { it.serverId != null && it.syncState == SyncState.SYNCED.name }
+                .take(MAX_FACE_RETRIES_PER_PASS)
+
+            var settled = 0
+
+            for (report in awaiting) {
+                val status = submitPhotoForMatching(report.clientId).getOrNull()
+                    ?: FaceMatchStatus.SERVICE_UNAVAILABLE
+
+                // Still unavailable means the outage has not lifted. Stop rather than walk
+                // the rest of the backlog into the same wall — the worker is already
+                // scheduled to come back with backoff.
+                if (status == FaceMatchStatus.SERVICE_UNAVAILABLE) break
+
+                settled++
+            }
+
+            Outcome.Success(settled)
+        }
 
     /**
      * Writes a face verdict locally without touching sync state.
@@ -405,7 +472,29 @@ class LostFoundRepositoryImpl @Inject constructor(
 
     override fun observeCandidateCount(): Flow<Int> = matchDao.observeCandidateCount()
 
+    /**
+     * The attribute-only pass, run the moment a report is filed.
+     *
+     * Deliberately carries no face distances: at this point the photograph has not reached
+     * the server yet, and on a dead connection it never will. Their absence is "cannot
+     * compare", which the engine scores as no signal — never as a mismatch — so a volunteer
+     * with no signal still gets candidates ranked on the other nine attributes.
+     */
     override suspend fun findCandidates(reportClientId: String): Outcome<List<LostFoundMatch>> =
+        rankAndStore(reportClientId, faceDistances = emptyMap())
+
+    /**
+     * Ranks one report against the active opposite side and records the candidates.
+     *
+     * [faceDistances] is keyed by the opposite report's client id and arrives from
+     * `process-face` immediately after enrolment. It is the same pass either way — running
+     * a second, face-aware implementation alongside the attribute-only one is how the two
+     * drift apart and start proposing different pairs for the same board.
+     */
+    private suspend fun rankAndStore(
+        reportClientId: String,
+        faceDistances: Map<String, Double>,
+    ): Outcome<List<LostFoundMatch>> =
         withContext(dispatchers.io) {
             val subject = lostFoundDao.getByClientId(reportClientId)?.toDomain()
                 ?: return@withContext Outcome.Failure(AppError.NotFound())
@@ -413,10 +502,7 @@ class LostFoundRepositoryImpl @Inject constructor(
             val pool = lostFoundDao.getActiveByKind(subject.kind.opposite.wireName)
                 .map { it.toDomain() }
 
-            // Face distances come from the server and are only ever available once both
-            // sides have been processed. Their absence is "cannot compare", which the
-            // engine scores as no signal — never as a mismatch.
-            val ranked = matchingEngine.rank(subject, pool, faceDistances = emptyMap())
+            val ranked = matchingEngine.rank(subject, pool, faceDistances = faceDistances)
 
             val now = clock.nowEpochMillis()
             val created = mutableListOf<LostFoundMatchEntity>()
@@ -638,6 +724,9 @@ class LostFoundRepositoryImpl @Inject constructor(
 
     private companion object {
         const val TAG = "LostFoundRepository"
+
+        /** Bounded so a backlog drains over several passes instead of one long one. */
+        const val MAX_FACE_RETRIES_PER_PASS = 5
     }
 }
 
@@ -698,10 +787,15 @@ private fun LostFoundReport.matches(criteria: AttributeSearch): Boolean {
  *
  * A photograph, never an embedding. A client-supplied vector would be trivially forged into
  * a match, so the client's only input to face matching is the image itself.
+ *
+ * [action] asks for enrolment *and* a search in one call. The deployed face service has no
+ * route that searches by a stored record — `/v1/face/match` takes an image — so splitting
+ * the two would mean uploading the same photograph twice over a field connection to learn
+ * one extra thing. One upload, both answers.
  */
 @Serializable
-private data class FaceEnrolRequest(
+private data class FaceProcessingRequest(
     val report_client_id: String,
     val image: String,
-    val action: String = "enrol",
+    val action: String = "enrol_and_match",
 )

@@ -6,6 +6,7 @@ import com.varisahayak.domain.model.Incident
 import com.varisahayak.domain.model.IncidentCategory
 import com.varisahayak.domain.model.IncidentStatus
 import com.varisahayak.domain.model.Profile
+import com.varisahayak.domain.model.TimelineEvent
 import com.varisahayak.domain.model.Responder
 import com.varisahayak.domain.model.ResponderAvailability
 import kotlinx.coroutines.flow.Flow
@@ -132,6 +133,18 @@ interface IncidentRepository {
     fun observeReportedCount(userId: String): Flow<Int>
 
     fun observeResolvedCount(userId: String): Flow<Int>
+
+    /**
+     * The incident's lifecycle events, oldest first.
+     *
+     * Reads the existing `incident_events` audit trail — there is no second log. Local
+     * only, so the timeline is readable offline; [refreshTimeline] pulls the server's
+     * server-generated events (assignment, matching) that this device never wrote.
+     */
+    fun observeTimeline(incidentClientId: String): Flow<List<TimelineEvent>>
+
+    /** Pulls this one incident's events. Scoped deliberately: never the whole table. */
+    suspend fun refreshTimeline(incidentClientId: String): Outcome<Unit>
 
     /**
      * Creates an incident locally and returns immediately.

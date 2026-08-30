@@ -53,6 +53,7 @@ import com.varisahayak.core.designsystem.component.FloatingTopBar
 import com.varisahayak.core.designsystem.component.WalkieTalkieWidget
 import com.varisahayak.core.locale.AppLocale
 import com.varisahayak.core.permissions.AppPermissions
+import com.varisahayak.core.permissions.rememberPermissionController
 import com.varisahayak.core.walkie.WalkieUiState
 import com.varisahayak.domain.model.UserRole
 import com.varisahayak.domain.repository.AuthState
@@ -140,6 +141,23 @@ fun VariSahayakApp(
     // rotation but is deliberately not persisted across launches.
     var walkieVisible by rememberSaveable { mutableStateOf(false) }
     var walkieExpanded by rememberSaveable { mutableStateOf(true) }
+
+    // Push-to-talk needs RECORD_AUDIO. Asked when the radio panel is first opened, not at
+    // launch: a volunteer who never opens the radio has no reason to be asked for their
+    // microphone, and a permission dialog on the way in to an incident report is noise.
+    //
+    // The controller refuses to open the mic without the grant, so the failure mode if this
+    // is declined is a button that does nothing rather than one that silently transmits
+    // nothing — but that is a backstop, not the plan. The plan is to ask here.
+    val microphonePermission = rememberPermissionController(AppPermissions.MICROPHONE)
+    LaunchedEffect(walkieVisible) {
+        if (walkieVisible &&
+            !microphonePermission.state.isAnyGranted &&
+            !microphonePermission.state.hasBeenRequested
+        ) {
+            microphonePermission.request()
+        }
+    }
 
     // Auth navigation state machine
     LaunchedEffect(authState, profile) {
@@ -229,7 +247,19 @@ fun VariSahayakApp(
                             state = walkieState,
                             expanded = walkieExpanded,
                             onToggleExpanded = { walkieExpanded = !walkieExpanded },
-                            onStartTransmit = viewModel::startTransmit,
+                            // A press with no grant asks for one instead of keying a mic
+                            // that cannot open. Silently doing nothing here would be the
+                            // dangerous version — the volunteer would believe they had
+                            // been heard.
+                            onStartTransmit = {
+                                if (microphonePermission.state.isAnyGranted) {
+                                    viewModel.startTransmit()
+                                } else if (microphonePermission.isPermanentlyDenied) {
+                                    microphonePermission.openAppSettings()
+                                } else {
+                                    microphonePermission.request()
+                                }
+                            },
                             onStopTransmit = viewModel::stopTransmit,
                             onSelectChannel = viewModel::joinWalkieChannel,
                             modifier = Modifier

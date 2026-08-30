@@ -21,6 +21,15 @@ object AppPermissions {
     val CAMERA = listOf(Manifest.permission.CAMERA)
 
     /**
+     * Push-to-talk.
+     *
+     * RECORD_AUDIO alone: MODIFY_AUDIO_SETTINGS and BLUETOOTH are install-time grants and
+     * including them here would make the result map report a permission the system never
+     * asked about, which reads as a denial.
+     */
+    val MICROPHONE = listOf(Manifest.permission.RECORD_AUDIO)
+
+    /**
      * Empty below Android 13, where notifications need no runtime grant. Requesting a
      * permission that does not exist on the platform returns an immediate denial and
      * would make the UI think the user refused.
