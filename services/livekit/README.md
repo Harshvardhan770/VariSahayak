@@ -189,14 +189,40 @@ been unreliable. If the CLI will not run at all, both steps can be done from the
 dashboard — Edge Functions → Secrets, and Edge Functions → Deploy new function, pasting
 `supabase/functions/livekit-token/index.ts`.
 
-Verify the function answers, using an access token from a signed-in session:
+Verify the function answers. This needs a **user** access token — the JWT Supabase issues to
+a signed-in account. Not the anon key: the anon key identifies the app, `verify_jwt` wants a
+person, and sending the anon key here returns 401.
+
+Get one by signing in over the Auth REST API with any existing volunteer account:
 
 ```bash
-curl -s -X POST "https://<project-ref>.supabase.co/functions/v1/livekit-token" \
-  -H "Authorization: Bearer <user access token>" \
+# From the repository root. SUPABASE_URL and SUPABASE_ANON_KEY come from .env.
+set -a; . ./.env; set +a
+
+ACCESS_TOKEN=$(curl -s -X POST "$SUPABASE_URL/auth/v1/token?grant_type=password" \
+  -H "apikey: $SUPABASE_ANON_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"volunteer@example.com","password":"<their password>"}' \
+  | python -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+
+echo "${ACCESS_TOKEN:0:24}…"   # sanity check: should start with eyJ
+```
+
+If that prints a KeyError instead of a token, the sign-in itself failed — rerun the first
+curl without the pipe and read the `error_description`.
+
+Then call the function:
+
+```bash
+curl -s -X POST "$SUPABASE_URL/functions/v1/livekit-token" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "apikey: $SUPABASE_ANON_KEY" \
   -H "Content-Type: application/json" \
   -d '{"room":"route-main"}'
 ```
+
+The access token expires after an hour (`jwt_expiry = 3600` in `supabase/config.toml`), so
+re-run the sign-in if a later test suddenly starts returning 401.
 
 Expect `{"ok":true,"token":"eyJ...","identity":"<uuid>","name":"<display name>",...}`.
 A 401 means the token was missing or expired. `{"ok":false,"message":"The radio is not
