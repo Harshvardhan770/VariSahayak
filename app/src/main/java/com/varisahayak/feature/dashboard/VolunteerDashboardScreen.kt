@@ -30,6 +30,7 @@ import com.varisahayak.core.designsystem.accentTone
 import com.varisahayak.core.designsystem.component.ActiveAssignmentCard
 import com.varisahayak.core.designsystem.component.CompactStat
 import com.varisahayak.core.designsystem.component.IncidentRow
+import com.varisahayak.core.designsystem.component.RewardSummaryCard
 import com.varisahayak.core.designsystem.component.ShimmerLoadingState
 import com.varisahayak.core.designsystem.component.NotConnectedPanel
 import com.varisahayak.core.designsystem.component.OperationalCard
@@ -108,6 +109,15 @@ fun VolunteerDashboardScreen(
             walkieVisible = walkieVisible,
             onRetrySync = viewModel::retrySync,
         )
+
+        uiState.rewardProfile?.let { rewardProfile ->
+            item(key = "rewards") {
+                Column(verticalArrangement = Arrangement.spacedBy(Dimens.SpaceSm)) {
+                    SectionHeader(title = "My Impact")
+                    RewardSummaryCard(profile = rewardProfile)
+                }
+            }
+        }
 
         item(key = "my-tasks") {
             Column(verticalArrangement = Arrangement.spacedBy(Dimens.SpaceSm)) {

@@ -64,17 +64,11 @@ fun FloatingTopBar(
     walkieEnabled: Boolean,
     onToggleWalkie: () -> Unit,
     modifier: Modifier = Modifier,
+    showDetails: Boolean = true,
 ) {
     val colors = VariTheme.colors
 
     GlassSurface(modifier = modifier.fillMaxWidth()) {
-        // Two rows, not one.
-        //
-        // A single row cannot hold a title, two status badges, a three-way language
-        // switcher and a toggle on a 360dp screen: the controls claim their intrinsic
-        // widths, the badges get whatever is left, and a word like "Volunteer" wraps one
-        // character per line. Splitting the row gives the badges the full width they need
-        // and keeps every touch target at its proper size.
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -100,24 +94,26 @@ fun FloatingTopBar(
                     onSelect = onLocaleChange,
                 )
 
-                WalkieToggle(
-                    enabled = walkieEnabled,
-                    onClick = onToggleWalkie,
-                )
+                if (showDetails) {
+                    WalkieToggle(
+                        enabled = walkieEnabled,
+                        onClick = onToggleWalkie,
+                    )
+                }
             }
 
-            // Scrolls rather than wraps: a status row that grows to two lines on a long
-            // role name would change the height of the bar every time the role changed.
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceXs),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                NetworkStatusPill(isOnline = isOnline)
-                if (role != null) {
-                    RoleBadge(role = role)
+            if (showDetails) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceXs),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    NetworkStatusPill(isOnline = isOnline)
+                    if (role != null) {
+                        RoleBadge(role = role)
+                    }
                 }
             }
         }
@@ -194,6 +190,7 @@ private fun LanguageSegment(
             )
             // The segment reads compact but still meets the touch floor.
             .defaultMinSize(minWidth = Dimens.MinTouchTarget, minHeight = Dimens.MinTouchTarget)
+            .background(if (selected) colors.brandSolid.copy(alpha = 0.1f) else Color.Transparent)
             // TalkBack announces the endonym, not the two-letter code: "MR" is a label for
             // the eye, not something anyone wants read aloud to them.
             .semantics { contentDescription = fullName },
@@ -204,6 +201,10 @@ private fun LanguageSegment(
                 .height(Dimens.PillHeight)
                 .clip(shape)
                 .background(container)
+                .border(
+                    if (selected) BorderStroke(1.dp, colors.brandBorder) else BorderStroke(0.dp, Color.Transparent),
+                    shape
+                )
                 .padding(horizontal = Dimens.SpaceSm),
             contentAlignment = Alignment.Center,
         ) {

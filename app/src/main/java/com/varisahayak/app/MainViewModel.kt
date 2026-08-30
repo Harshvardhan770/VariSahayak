@@ -14,7 +14,6 @@ import com.varisahayak.data.sync.SyncScheduler
 import com.varisahayak.feature.notifications.LocalAlertNotifier
 import com.varisahayak.feature.notifications.NotificationDeepLinkBus
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -60,7 +59,6 @@ class MainViewModel @Inject constructor(
             authRepository.authState
                 .filterIsInstance<AuthState.SignedIn>()
                 .map { it.userId }
-                .distinctUntilChanged()
                 .collect(::ensureProfileFor)
         }
     }

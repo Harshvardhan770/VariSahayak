@@ -1,10 +1,17 @@
 package com.varisahayak.core.designsystem.component
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,14 +29,16 @@ import androidx.compose.material.icons.filled.Podcasts
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -56,14 +65,6 @@ fun DashboardHeader(
     displayName: String,
     role: UserRole,
     subtitle: String?,
-    /**
-     * Null hides the bell entirely.
-     *
-     * There is no notifications screen and no notifications repository in this app yet, so
-     * on every current caller this is null. A bell that opens nothing, or that carries a
-     * badge no data feeds, is worse than no bell — it invites someone to check it during an
-     * emergency and find it empty.
-     */
     onNotifications: (() -> Unit)?,
     onWalkie: () -> Unit,
     onSos: () -> Unit,
@@ -72,55 +73,70 @@ fun DashboardHeader(
     walkieActive: Boolean = false,
 ) {
     val colors = VariTheme.colors
+    var visible by remember { mutableStateOf(false) }
+    
+    LaunchedEffect(Unit) {
+        visible = true
+    }
 
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceSm),
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(tween(800)) + slideInVertically(tween(800)) { -20 }
     ) {
-        RoleAvatar(displayName = displayName, role = role)
+        Row(
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(vertical = Dimens.SpaceSm),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceSm),
+        ) {
+            RoleAvatar(displayName = displayName, role = role, size = 64.dp)
 
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = stringResource(R.string.dashboard_greeting, displayName),
-                style = MaterialTheme.typography.headlineSmall,
-                color = colors.textPrimary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                // "Medical Responder · First Aid Team". The separator is a middle dot with
-                // hair spaces rather than a bullet: it has to sit between a Devanagari role
-                // name and a Latin organisation without looking like punctuation of either.
-                text = listOfNotNull(stringResource(role.labelRes()), subtitle)
-                    .joinToString("  ·  "),
-                style = MaterialTheme.typography.bodyMedium,
-                color = colors.textSecondary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.dashboard_greeting, displayName),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.textPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = listOfNotNull(stringResource(role.labelRes()), subtitle)
+                        .joinToString("  ·  "),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceXs)
+            ) {
+                if (onNotifications != null) {
+                    HeaderIconButton(
+                        icon = Icons.Filled.Notifications,
+                        contentDescription = stringResource(R.string.notifications_title),
+                        onClick = onNotifications,
+                        badgeCount = unreadNotifications,
+                    )
+                }
+
+                HeaderIconButton(
+                    icon = Icons.Filled.Podcasts,
+                    contentDescription = stringResource(
+                        if (walkieActive) R.string.walkie_hide else R.string.walkie_show,
+                    ),
+                    onClick = onWalkie,
+                    tint = if (walkieActive) colors.onBrandSubtle else colors.textSecondary,
+                    container = if (walkieActive) colors.brandSubtle else colors.cardSurface,
+                )
+
+                SosHeaderButton(onClick = onSos)
+            }
         }
-
-        if (onNotifications != null) {
-            HeaderIconButton(
-                icon = Icons.Filled.Notifications,
-                contentDescription = stringResource(R.string.notifications_title),
-                onClick = onNotifications,
-                badgeCount = unreadNotifications,
-            )
-        }
-
-        HeaderIconButton(
-            icon = Icons.Filled.Podcasts,
-            contentDescription = stringResource(
-                if (walkieActive) R.string.walkie_hide else R.string.walkie_show,
-            ),
-            onClick = onWalkie,
-            tint = if (walkieActive) colors.onBrandSubtle else colors.textSecondary,
-            container = if (walkieActive) colors.brandSubtle else colors.cardSurface,
-        )
-
-        SosHeaderButton(onClick = onSos)
     }
 }
 
@@ -187,8 +203,18 @@ private fun HeaderIconButton(
     container: androidx.compose.ui.graphics.Color? = null,
 ) {
     val colors = VariTheme.colors
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    
+    val highlightColor by animateColorAsState(
+        targetValue = if (isPressed) (tint ?: colors.brandSolid).copy(alpha = 0.2f) else Color.Transparent,
+        label = "icon_highlight"
+    )
+
     Box(
-        modifier = modifier.size(Dimens.MinTouchTarget),
+        modifier = modifier
+            .size(Dimens.MinTouchTarget)
+            .background(highlightColor, CircleShape),
         contentAlignment = Alignment.Center,
     ) {
         Box(
@@ -197,7 +223,11 @@ private fun HeaderIconButton(
                 .clip(CircleShape)
                 .background(container ?: colors.cardSurface)
                 .border(BorderStroke(Dimens.Hairline, colors.cardBorder), CircleShape)
-                .clickable(onClick = onClick),
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    onClick = onClick
+                ),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
@@ -290,27 +320,37 @@ fun DashboardStatusRow(
     channelTone: AccentTone? = null,
     onChannelClick: (() -> Unit)? = null,
 ) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceSm),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        NetworkStatusPill(isOnline = isOnline)
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        visible = true
+    }
 
-        if (channelName != null) {
-            val tone = channelTone ?: com.varisahayak.core.designsystem.Accents.blue
-            StatusPill(
-                text = channelName,
-                tone = BadgeTone(
-                    container = tone.container,
-                    content = tone.accent,
-                    border = tone.accent.copy(alpha = 0.25f),
-                ),
-                icon = Icons.Filled.Podcasts,
-                onClick = onChannelClick,
-            )
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(tween(800, 200)) + slideInVertically(tween(800, 200)) { 20 }
+    ) {
+        Row(
+            modifier = modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceSm),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            NetworkStatusPill(isOnline = isOnline)
+
+            if (channelName != null) {
+                val tone = channelTone ?: com.varisahayak.core.designsystem.Accents.blue
+                StatusPill(
+                    text = channelName,
+                    tone = BadgeTone(
+                        container = tone.container,
+                        content = tone.accent,
+                        border = tone.accent.copy(alpha = 0.25f),
+                    ),
+                    icon = Icons.Filled.Podcasts,
+                    onClick = onChannelClick,
+                )
+            }
         }
     }
 }

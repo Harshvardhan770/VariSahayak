@@ -21,9 +21,14 @@ import com.varisahayak.domain.model.IncidentCategory
 import com.varisahayak.domain.model.IncidentStateMachine
 import com.varisahayak.domain.model.IncidentEventKind
 import com.varisahayak.domain.model.IncidentStatus
+
 import com.varisahayak.domain.model.TimelineEvent
+
+import com.varisahayak.domain.model.RewardEngine
+
 import com.varisahayak.domain.model.SyncState
 import com.varisahayak.domain.repository.IncidentRepository
+import com.varisahayak.domain.repository.RewardRepository
 import com.varisahayak.domain.repository.SyncSummary
 import com.varisahayak.domain.usecase.PriorityEngine
 import com.varisahayak.domain.usecase.PriorityInput
@@ -45,6 +50,7 @@ class IncidentRepositoryImpl @Inject constructor(
     private val supabase: SupabaseClient,
     private val incidentDao: IncidentDao,
     private val incidentEventDao: IncidentEventDao,
+    private val rewardRepository: RewardRepository,
     private val priorityEngine: PriorityEngine,
     private val syncScheduler: SyncScheduler,
     private val dispatchers: DispatcherProvider,
@@ -67,6 +73,12 @@ class IncidentRepositoryImpl @Inject constructor(
         incidentDao.observeByClientId(clientId).map { it?.toDomain() }
 
     override fun observeUnsyncedCount(): Flow<Int> = incidentDao.observeUnsyncedCount()
+
+    override fun observeReportedCount(userId: String): Flow<Int> =
+        incidentDao.observeReportedCount(userId)
+
+    override fun observeResolvedCount(userId: String): Flow<Int> =
+        incidentDao.observeResolvedCount(userId)
 
     /**
      * Creates an incident locally and returns immediately.
@@ -176,6 +188,22 @@ class IncidentRepositoryImpl @Inject constructor(
                     note = note,
                     at = now,
                 )
+
+                // Gamification: Award XP and record impact on resolution
+                if (result.status == IncidentStatus.RESOLVED) {
+                    val entity = incidentDao.getByClientId(clientId)
+                    if (entity != null) {
+                        val isSos = entity.isSos
+                        val xp = if (isSos) RewardEngine.XP_RESOLVE_SOS else RewardEngine.XP_RESOLVE_INCIDENT
+                        val reason = if (isSos) "Resolved SOS emergency" else "Resolved incident"
+                        
+                        rewardRepository.awardXp(xp, reason, clientId)
+                        rewardRepository.recordImpact(
+                            incidentsResolved = 1,
+                            sosResponses = if (isSos) 1 else 0
+                        )
+                    }
+                }
 
                 syncScheduler.requestSync()
 

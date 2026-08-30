@@ -52,6 +52,7 @@ import com.varisahayak.core.designsystem.component.DonutChart
 import com.varisahayak.core.designsystem.component.DonutLegend
 import com.varisahayak.core.designsystem.component.DonutSlice
 import com.varisahayak.core.designsystem.component.IncidentCard
+import com.varisahayak.core.designsystem.component.IncidentQuickActions
 import com.varisahayak.core.designsystem.component.IncidentRow
 import com.varisahayak.core.designsystem.component.ShimmerLoadingState
 import com.varisahayak.core.designsystem.component.NotConnectedPanel
@@ -233,14 +234,23 @@ private fun LazyListScope.assignedWorkItems(
     }
 
     items(items = incidents, key = { "assigned-${it.clientId}" }) { incident ->
-        val next = incident.status.nextAction()
         IncidentCard(
             incident = incident,
             nowMillis = nowMillis,
             myLocation = myLocation,
             onClick = { onDetail(incident.clientId) },
-            actionLabel = next?.let { stringResource(it.labelRes) },
-            onAction = next?.let { { onAdvance(incident.clientId, it.target) } },
+            actions = IncidentQuickActions(
+                onAccept = if (incident.status == IncidentStatus.ASSIGNED) {
+                    { onAdvance(incident.clientId, IncidentStatus.ACCEPTED) }
+                } else null,
+                onEnRoute = if (incident.status == IncidentStatus.ACCEPTED) {
+                    { onAdvance(incident.clientId, IncidentStatus.IN_PROGRESS) }
+                } else null,
+                onResolve = if (incident.status == IncidentStatus.IN_PROGRESS) {
+                    { onAdvance(incident.clientId, IncidentStatus.RESOLVED) }
+                } else null,
+                onViewMap = { onDetail(incident.clientId) }, // For now, detail has map
+            )
         )
     }
 }

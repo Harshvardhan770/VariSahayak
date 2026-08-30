@@ -240,6 +240,22 @@
     <string name="profile_organisation">Organisation</string>
     <string name="profile_area">Assigned area</string>
     <string name="profile_language">Language</string>
+    <string name="profile_impact">Your Impact</string>
+    <string name="profile_reported">Incidents Reported</string>
+    <string name="profile_resolved">Incidents Resolved</string>
+    <string name="profile_app_info">App Information</string>
+    <string name="profile_version">Version</string>
+    <string name="profile_environment">Environment</string>
+    <string name="profile_not_assigned">Not Assigned</string>
+    <string name="profile_all_route">All Route</string>
+
+    <!-- Rewards -->
+    <string name="reward_level">Level %1$d</string>
+    <string name="reward_xp_to_next">%1$d XP to Level %2$d</string>
+    <string name="reward_impact_resolved">Resolved</string>
+    <string name="reward_impact_sos">SOS</string>
+    <string name="reward_impact_assisted">Assisted</string>
+    <string name="reward_badges">Badges</string>
 
     <!-- Accessibility content descriptions -->
     <string name="cd_priority_badge">Priority: %1$s</string>
@@ -422,6 +438,54 @@
     <string name="admin_alert_critical">%1$d critical incidents are open</string>
     <string name="admin_alert_critical_detail">Includes every active SOS.</string>
     <string name="admin_all_clear">Nothing needs attention right now</string>
+
+    <!-- Professional Alert Templates -->
+    <string name="alert_tpl_medical_title">MEDICAL EMERGENCY</string>
+    <string name="alert_tpl_medical_body">Immediate medical assistance required near %1$s. Reported: %2$s. Persons affected: %3$s. Nearest medical responder has been notified. ACTION: Proceed to location and assess the situation.</string>
+    <string name="alert_tpl_lost_person_title">LOST PERSON ALERT</string>
+    <string name="alert_tpl_lost_person_body">A person has been reported missing near %1$s. Description: %2$s. Last seen: %3$s. ACTION: Nearby volunteers and police units are requested to check the surrounding area.</string>
+    <string name="alert_tpl_found_person_title">FOUND PERSON ALERT</string>
+    <string name="alert_tpl_found_person_body">A person has been found near %1$s. Description: %2$s. ACTION: Nearby volunteers and coordinators are requested to assist in identification.</string>
+    <string name="alert_tpl_missing_child_title">MISSING CHILD - CRITICAL</string>
+    <string name="alert_tpl_missing_child_body">A child is reported missing near %1$s. Description: %2$s. ACTION: IMMEDIATE SEARCH REQUIRED. All nearby personnel check your immediate vicinity.</string>
+    <string name="alert_tpl_crowd_surge_title">CROWD SAFETY ALERT</string>
+    <string name="alert_tpl_crowd_surge_body">High crowd density reported near %1$s. Current status: %2$s. ACTION: Police/volunteers in the area are requested to monitor movement and prevent further crowding.</string>
+    <string name="alert_tpl_road_blockage_title">ROUTE BLOCKAGE</string>
+    <string name="alert_tpl_road_blockage_body">Movement is obstructed near %1$s. Cause: %2$s. ACTION: Route personnel requested to assess the obstruction and coordinate clearance.</string>
+    <string name="alert_tpl_water_shortage_title">WATER SHORTAGE</string>
+    <string name="alert_tpl_water_shortage_body">Water shortage reported at %1$s. ACTION: Logistics team requested to coordinate supply replenishment.</string>
+    <string name="alert_tpl_food_shortage_title">SUPPLY SHORTAGE</string>
+    <string name="alert_tpl_food_shortage_body">Food/supply shortage reported at %1$s. ACTION: Coordinating with nearby NGOs for replenishment.</string>
+    <string name="alert_tpl_sanitation_title">SANITATION ISSUE</string>
+    <string name="alert_tpl_sanitation_body">Sanitation issue reported near %1$s. ACTION: Cleanup crew dispatched to location.</string>
+    <string name="alert_tpl_volunteer_assist_title">ASSISTANCE REQUIRED</string>
+    <string name="alert_tpl_volunteer_assist_body">Additional volunteers needed at %1$s for %2$s. ACTION: Available volunteers in the area please report to the coordinator.</string>
+    <string name="alert_tpl_fire_hazard_title">FIRE/SAFETY HAZARD</string>
+    <string name="alert_tpl_fire_hazard_body">Potential safety hazard reported near %1$s. ACTION: EMERGENCY RESPONSE REQUESTED. Keep pilgrims away from the area.</string>
+    <string name="alert_tpl_security_title">SECURITY INCIDENT</string>
+    <string name="alert_tpl_security_body">Security incident reported at %1$s. ACTION: Police units proceed to location for assessment.</string>
+    <string name="alert_tpl_infrastructure_title">INFRASTRUCTURE ISSUE</string>
+    <string name="alert_tpl_infrastructure_body">Infrastructure damage/issue reported at %1$s. ACTION: Maintenance team notified.</string>
+    <string name="alert_tpl_general_title">GENERAL INCIDENT</string>
+    <string name="alert_tpl_general_body">Incident reported at %1$s. Description: %2$s. ACTION: Relevant personnel requested to assess.</string>
+    <string name="alert_tpl_sos_critical_title">CRITICAL SOS</string>
+    <string name="alert_tpl_sos_critical_body">Immediate assistance required at %1$s. Incident: %2$s. Reported by: %3$s. ACTION REQUIRED: Nearest available responder proceed immediately and acknowledge this alert.</string>
+
+    <string name="alert_unknown_location">Unknown location</string>
+    <string name="alert_approx_location">Approximate location</string>
+    <string name="alert_reported_by">Reported by %1$s</string>
+    <string name="alert_id">ID: %1$s</string>
+
+    <!-- Quick Actions -->
+    <string name="action_acknowledge">Acknowledge</string>
+    <string name="action_accept_respond">Respond</string>
+    <string name="action_view_location">View Map</string>
+    <string name="action_contact_reporter">Contact Reporter</string>
+    <string name="action_escalate">Escalate</string>
+    <string name="action_mark_resolved">Mark Resolved</string>
+    <string name="action_en_route">En Route</string>
+    <string name="action_on_scene">On Scene</string>
+    <string name="action_reassign">Reassign</string>
 
     <!-- ============ police ============ -->
     <string name="police_patrol_tasks">Patrol tasks</string>

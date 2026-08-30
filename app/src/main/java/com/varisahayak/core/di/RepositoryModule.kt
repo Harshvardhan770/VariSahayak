@@ -11,6 +11,7 @@ import com.varisahayak.data.repository.PalkhiRepositoryImpl
 import com.varisahayak.data.repository.ProfileRepositoryImpl
 import com.varisahayak.data.repository.QrLocationRepositoryImpl
 import com.varisahayak.data.repository.ResponderRepositoryImpl
+import com.varisahayak.data.repository.RewardRepositoryImpl
 import com.varisahayak.domain.repository.AuthRepository
 import com.varisahayak.domain.repository.ClassificationRepository
 import com.varisahayak.domain.repository.CommunicationRepository
@@ -21,6 +22,7 @@ import com.varisahayak.domain.repository.LostFoundRepository
 import com.varisahayak.domain.repository.PalkhiRepository
 import com.varisahayak.domain.repository.ProfileRepository
 import com.varisahayak.domain.repository.QrLocationRepository
+import com.varisahayak.domain.repository.RewardRepository
 import com.varisahayak.domain.repository.ResponderRepository
 import dagger.Binds
 import dagger.Module
@@ -98,4 +100,10 @@ abstract class RepositoryModule {
     abstract fun bindPalkhiRepository(
         impl: PalkhiRepositoryImpl
     ): PalkhiRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindRewardRepository(
+        impl: RewardRepositoryImpl
+    ): RewardRepository
 }

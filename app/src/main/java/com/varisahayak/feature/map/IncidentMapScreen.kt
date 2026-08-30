@@ -61,6 +61,7 @@ import com.varisahayak.core.designsystem.VariTheme
 import com.varisahayak.core.designsystem.component.CategoryFilterRow
 import com.varisahayak.core.designsystem.component.GlassSurface
 import com.varisahayak.core.designsystem.component.IncidentCard
+import com.varisahayak.core.designsystem.component.IncidentQuickActions
 import com.varisahayak.core.designsystem.component.VariSecondaryButton
 import com.varisahayak.core.designsystem.component.labelRes
 import com.varisahayak.core.designsystem.component.solidColor
@@ -431,8 +432,9 @@ private fun IncidentDrawer(
                                 nowMillis = nowMillis,
                                 myLocation = myLocation,
                                 onClick = { onIncidentSelected(incident.clientId) },
-                                actionLabel = stringResource(R.string.action_dispatch),
-                                onAction = { onIncidentSelected(incident.clientId) },
+                                actions = IncidentQuickActions(
+                                    onViewMap = { onIncidentSelected(incident.clientId) }
+                                )
                             )
                         }
                     }

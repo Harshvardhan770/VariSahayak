@@ -13,18 +13,19 @@ interface CommunicationRepository {
     /** Observes the list of available channels for the user. */
     fun observeChannels(): Flow<List<CommunicationChannel>>
     
-    /** Observes messages for a specific channel. */
-    fun observeMessages(channelId: String): Flow<List<CommunicationMessage>>
+    /** Observes new messages for a specific channel. */
+    fun observeMessages(channelId: String): Flow<CommunicationMessage>
     
     /** 
      * Sends a message to one or more channels.
      * If multiple channels are provided, it acts as a broadcast.
+     * @return The list of messages created for the targets.
      */
     suspend fun sendMessage(
         channelIds: List<String>,
         content: String,
         isSos: Boolean = false
-    ): Outcome<Unit>
+    ): Outcome<List<CommunicationMessage>>
     
     /** Marks messages in a channel as read. */
     suspend fun markAsRead(channelId: String): Outcome<Unit>

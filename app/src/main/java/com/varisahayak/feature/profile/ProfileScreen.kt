@@ -17,9 +17,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CloudSync
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.Stars
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -39,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import com.varisahayak.R
 import com.varisahayak.core.designsystem.Dimens
 import com.varisahayak.core.designsystem.VariTheme
+import com.varisahayak.core.designsystem.component.RewardSummaryCard
 import com.varisahayak.core.designsystem.component.ShimmerLoadingState
 import com.varisahayak.core.designsystem.component.RoleBadge
 import com.varisahayak.core.designsystem.component.VariPrimaryButton
@@ -47,6 +50,7 @@ import com.varisahayak.core.designsystem.component.VariPrimaryButton
 fun ProfileScreen(
     viewModel: ProfileViewModel,
     onSignOut: () -> Unit,
+    onNavigateToBulkRegistration: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -105,7 +109,20 @@ fun ProfileScreen(
                 profile?.role?.let { role ->
                     RoleBadge(role = role)
                 }
+
+                if (profile?.phone != null) {
+                    Text(
+                        text = profile.phone,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    )
+                }
             }
+        }
+
+        // Rewards Section
+        uiState.rewardProfile?.let { rewardProfile ->
+            RewardSummaryCard(profile = rewardProfile)
         }
 
         // Details Section
@@ -130,18 +147,91 @@ fun ProfileScreen(
 
                 ProfileItemRow(
                     label = stringResource(R.string.profile_organisation),
-                    value = profile?.organisationName ?: "Not Assigned",
+                    value = profile?.organisationName ?: stringResource(R.string.profile_not_assigned),
                 )
 
                 ProfileItemRow(
                     label = stringResource(R.string.profile_area),
-                    value = profile?.areaName ?: "All Route",
+                    value = profile?.areaName ?: stringResource(R.string.profile_all_route),
+                )
+            }
+        }
+
+        // System Information
+        Card(
+            shape = RoundedCornerShape(Dimens.CornerMd),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(Dimens.SpaceMd),
+                verticalArrangement = Arrangement.spacedBy(Dimens.SpaceSm),
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(Dimens.SpaceSm)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Info,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(Dimens.IconSm)
+                    )
+                    Text(
+                        text = stringResource(R.string.profile_app_info),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+
+                HorizontalDivider()
+
+                ProfileItemRow(
+                    label = stringResource(R.string.profile_version),
+                    value = "1.0.0",
                 )
 
-                profile?.phone?.let { phone ->
-                    ProfileItemRow(
-                        label = "Phone",
-                        value = phone,
+                ProfileItemRow(
+                    label = stringResource(R.string.profile_environment),
+                    value = if (com.varisahayak.BuildConfig.DEBUG) "Development" else "Production",
+                )
+            }
+        }
+
+        if (profile?.role?.isCommand == true) {
+            // Management Section
+            Card(
+                shape = RoundedCornerShape(Dimens.CornerMd),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(Dimens.SpaceMd),
+                    verticalArrangement = Arrangement.spacedBy(Dimens.SpaceSm),
+                ) {
+                    Text(
+                        text = "Management",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+
+                    HorizontalDivider()
+
+                    VariPrimaryButton(
+                        text = "Bulk Registration",
+                        onClick = onNavigateToBulkRegistration,
+                        icon = Icons.Filled.PersonAdd,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    
+                    Text(
+                        text = "Import multiple responders or volunteers via Excel sheet.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }

@@ -88,6 +88,9 @@ sealed interface Destination {
     @Serializable
     data object Profile : Destination
 
+    @Serializable
+    data object BulkRegistration : Destination
+
     /** Shown when a signed-in account has no recognised role. */
     @Serializable
     data object NoRole : Destination

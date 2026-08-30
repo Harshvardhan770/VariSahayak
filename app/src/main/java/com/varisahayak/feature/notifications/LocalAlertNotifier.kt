@@ -15,6 +15,7 @@ import com.varisahayak.app.MainActivity
 import com.varisahayak.domain.model.Incident
 import com.varisahayak.domain.repository.AuthRepository
 import com.varisahayak.domain.repository.IncidentRepository
+import com.varisahayak.domain.usecase.AlertTemplateGenerator
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -58,7 +59,11 @@ import javax.inject.Singleton
 class LocalAlertNotifier @Inject constructor(
     @ApplicationContext private val context: Context,
     private val incidentRepository: IncidentRepository,
+
     private val authRepository: AuthRepository,
+
+    private val templateGenerator: AlertTemplateGenerator,
+
 ) {
 
     private val scope = CoroutineScope(SupervisorJob())
@@ -166,6 +171,12 @@ class LocalAlertNotifier @Inject constructor(
             incident = incident,
             type = TYPE_SOS,
         )
+
+        val alert = templateGenerator.generate(incident, System.currentTimeMillis())
+
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle(alert.title)
+            .setContentText(alert.body)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             // The sticky part. Ongoing blocks the swipe; autoCancel(false) means opening the
@@ -194,6 +205,9 @@ class LocalAlertNotifier @Inject constructor(
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_EVENT)
             .setAutoCancel(true)
+
+            .setContentIntent(openIntent(incident))
+            .setStyle(NotificationCompat.BigTextStyle().bigText(alert.body))
             .build()
 
         post(incidentNotificationId(incident.clientId), notification)

@@ -57,6 +57,8 @@ import com.varisahayak.core.permissions.rememberPermissionController
 import com.varisahayak.core.walkie.WalkieUiState
 import com.varisahayak.domain.model.UserRole
 import com.varisahayak.domain.repository.AuthState
+import com.varisahayak.feature.auth.BulkRegistrationScreen
+import com.varisahayak.feature.auth.BulkRegistrationViewModel
 import com.varisahayak.feature.auth.ForgotPasswordScreen
 import com.varisahayak.feature.auth.SignInScreen
 import com.varisahayak.feature.auth.SignInViewModel
@@ -159,15 +161,23 @@ fun VariSahayakApp(
 
     // Auth navigation state machine
     LaunchedEffect(authState, profile) {
-        when (authState) {
+        val state = authState
+        when (state) {
             is AuthState.SignedIn -> {
                 profile?.let { p ->
-                    val home = TopLevelDestination.homeRoute(p.role)
-                    // Only navigate to home if currently on splash or auth screens
-                    if (currentRoute == null || currentRoute.contains("Splash") || currentRoute.contains("SignIn") || currentRoute.contains("SignUp")) {
-                        navController.navigate(home) {
-                            popUpTo(Destination.Splash) { inclusive = true }
-                            launchSingleTop = true
+                    // The profile in the store has to belong to the authenticated user.
+                    // On a new sign-in the authState updates instantly, but the profile
+                    // Flow might still emit the cached row from a previous session for
+                    // one frame — navigating on it would drop an Admin into the 
+                    // Volunteer dashboard of the person who used the device last.
+                    if (p.userId == state.userId) {
+                        val home = TopLevelDestination.homeRoute(p.role)
+                        // Only navigate to home if currently on splash or auth screens
+                        if (currentRoute == null || currentRoute.contains("Splash") || currentRoute.contains("SignIn") || currentRoute.contains("SignUp")) {
+                            navController.navigate(home) {
+                                popUpTo(Destination.Splash) { inclusive = true }
+                                launchSingleTop = true
+                            }
                         }
                     }
                 }
@@ -202,6 +212,7 @@ fun VariSahayakApp(
         containerColor = Color.Transparent,
         topBar = {
             if (!isAuthOrSplash) {
+                val isDashboard = currentRoute?.contains("Dashboard") == true
                 FloatingTopBar(
                     title = stringResource(currentRoute.titleRes()),
                     role = profile?.role,
@@ -210,6 +221,7 @@ fun VariSahayakApp(
                     onLocaleChange = onLocaleChange,
                     walkieEnabled = walkieVisible,
                     onToggleWalkie = { walkieVisible = !walkieVisible },
+                    showDetails = !isDashboard,
                     modifier = Modifier
                         .statusBarsPadding()
                         .padding(
@@ -263,8 +275,9 @@ fun VariSahayakApp(
                     VariNavigationBar(
                         destinations = TopLevelDestination.forRole(currentRole),
                         currentRoute = currentRoute,
+                        currentRole = currentRole,
                         onSelect = { dest ->
-                            navController.navigate(dest.route) {
+                            navController.navigate(dest.routeFor(currentRole)) {
                                 popUpTo(navController.graph.findStartDestination().id) {
                                     saveState = true
                                 }
@@ -298,6 +311,7 @@ fun VariSahayakApp(
 private fun VariNavigationBar(
     destinations: List<TopLevelDestination>,
     currentRoute: String?,
+    currentRole: UserRole,
     onSelect: (TopLevelDestination) -> Unit,
 ) {
     val colors = VariTheme.colors
@@ -307,7 +321,8 @@ private fun VariNavigationBar(
         tonalElevation = NavigationBarDefaults.Elevation,
     ) {
         destinations.forEach { dest ->
-            val isSelected = currentRoute?.contains(dest.route::class.simpleName ?: "") == true
+            val route = dest.routeFor(currentRole)
+            val isSelected = currentRoute?.contains(route::class.simpleName ?: "") == true
             NavigationBarItem(
                 selected = isSelected,
                 onClick = { onSelect(dest) },
@@ -319,7 +334,7 @@ private fun VariNavigationBar(
                 },
                 label = {
                     Text(
-                        text = stringResource(dest.labelRes),
+                        text = stringResource(dest.labelResFor(currentRole)),
                         style = MaterialTheme.typography.labelSmall,
                     )
                 },
@@ -557,6 +572,17 @@ private fun VariNavHost(
                         popUpTo(0) { inclusive = true }
                     }
                 },
+                onNavigateToBulkRegistration = {
+                    navController.navigate(Destination.BulkRegistration)
+                }
+            )
+        }
+
+        composable<Destination.BulkRegistration> {
+            val bulkViewModel: BulkRegistrationViewModel = hiltViewModel()
+            BulkRegistrationScreen(
+                viewModel = bulkViewModel,
+                onNavigateBack = { navController.popBackStack() }
             )
         }
     }

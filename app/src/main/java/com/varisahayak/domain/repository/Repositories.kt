@@ -61,6 +61,14 @@ interface AuthRepository {
         organisationName: String? = null,
     ): Outcome<SignUpResult>
 
+    /**
+     * Creates multiple accounts from a validated list.
+     * Returns a summary of successes and failures.
+     */
+    suspend fun bulkSignUp(
+        users: List<BulkUserRequest>
+    ): BulkSignUpResult
+
     suspend fun signOut(): Outcome<Unit>
 
     /** Sends a password-reset email. Succeeds silently for unknown addresses. */
@@ -78,6 +86,27 @@ sealed interface SignUpResult {
     data object SignedIn : SignUpResult
     data class ConfirmationRequired(val email: String) : SignUpResult
 }
+
+data class BulkUserRequest(
+    val email: String,
+    val displayName: String,
+    val role: com.varisahayak.domain.model.UserRole,
+    val organisationName: String? = null,
+    val areaName: String? = null,
+    val phone: String? = null,
+    val rowNumber: Int
+)
+
+data class BulkSignUpResult(
+    val created: List<BulkUserRequest>,
+    val failed: List<BulkUserFailure>
+)
+
+data class BulkUserFailure(
+    val request: BulkUserRequest,
+    val reason: String,
+    val suggestion: String? = null
+)
 
 interface ProfileRepository {
     /** Cached-first: emits the local profile immediately, then refreshes from the server. */
@@ -100,6 +129,10 @@ interface IncidentRepository {
     fun observeById(clientId: String): Flow<Incident?>
 
     fun observeUnsyncedCount(): Flow<Int>
+
+    fun observeReportedCount(userId: String): Flow<Int>
+
+    fun observeResolvedCount(userId: String): Flow<Int>
 
     /**
      * The incident's lifecycle events, oldest first.

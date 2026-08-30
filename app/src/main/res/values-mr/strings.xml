@@ -197,6 +197,22 @@
     <string name="profile_organisation">संस्था</string>
     <string name="profile_area">नेमून दिलेले क्षेत्र</string>
     <string name="profile_language">भाषा</string>
+    <string name="profile_impact">तुमचा प्रभाव</string>
+    <string name="profile_reported">नोंदवलेल्या घटना</string>
+    <string name="profile_resolved">सोडवलेल्या घटना</string>
+    <string name="profile_app_info">ॲपची माहिती</string>
+    <string name="profile_version">आवृत्ती</string>
+    <string name="profile_environment">वातावरण</string>
+    <string name="profile_not_assigned">नेमलेले नाही</string>
+    <string name="profile_all_route">संपूर्ण मार्ग</string>
+
+    <!-- Rewards -->
+    <string name="reward_level">पातळी %1$d</string>
+    <string name="reward_xp_to_next">पातळी %2$d साठी %1$d XP शिल्लक</string>
+    <string name="reward_impact_resolved">निराकरण</string>
+    <string name="reward_impact_sos">SOS</string>
+    <string name="reward_impact_assisted">मदत केलेले</string>
+    <string name="reward_badges">बॅजेस</string>
 
     <string name="cd_priority_badge">प्राधान्य: %1$s</string>
     <string name="cd_sync_badge">सिंक स्थिती: %1$s</string>
@@ -366,13 +382,57 @@
     <string name="admin_incident_mix">घटना विभागणी</string>
     <string name="admin_total">एकूण</string>
     <string name="admin_operational_alerts">कार्यरत सूचना</string>
-    <string name="admin_alert_failed_sync">%1$d अहवाल सिंक होऊ शकले नाहीत</string>
-    <string name="admin_alert_failed_sync_detail">ते उपकरणावर सुरक्षित आहेत आणि पुन्हा प्रयत्न होईल.</string>
-    <string name="admin_alert_unassigned">%1$d खुल्या घटनांना प्रतिसादकर्ता नाही</string>
-    <string name="admin_alert_unassigned_detail">जुळणीत कोणीही उपलब्ध आढळले नाही.</string>
-    <string name="admin_alert_critical">%1$d गंभीर घटना खुल्या आहेत</string>
-    <string name="admin_alert_critical_detail">यात प्रत्येक सक्रिय SOS समाविष्ट आहे.</string>
+    <string name="admin_alert_critical">%1$d गंभीर घटनाा उघड आहेत</string>
+    <string name="admin_alert_critical_detail">यात प्रत्येक सक्रिय SOS समाविष्ट आहे।</string>
     <string name="admin_all_clear">सध्या कशाकडेही लक्ष देण्याची गरज नाही</string>
+
+    <!-- Professional Alert Templates (Marathi) -->
+    <string name="alert_tpl_medical_title">वैद्यकीय आणीबाणी</string>
+    <string name="alert_tpl_medical_body">%1$s जवळ तातडीच्या वैद्यकीय मदतीची गरज आहे। नोंदवलेली वेळ: %2$s। बाधित व्यक्ती: %3$s। जवळच्या वैद्यकीय प्रतिसादकर्त्याला सूचित करण्यात आले आहे। कृती: घटनास्थळी जाऊन परिस्थितीची पाहणी करा।</string>
+    <string name="alert_tpl_lost_person_title">हरवलेली व्यक्ती अलर्ट</string>
+    <string name="alert_tpl_lost_person_body">%1$s जवळ एक व्यक्ती हरवल्याची नोंद झाली आहे। वर्णन: %2$s। शेवटचे पाहिलेले ठिकाण: %3$s। कृती: परिसरातील स्वयंसेवक आणि पोलीस युनिट्सना आजूबाजूचा परिसर तपासण्याची विनंती करण्यात येत आहे।</string>
+    <string name="alert_tpl_found_person_title">सापडलेली व्यक्ती अलर्ट</string>
+    <string name="alert_tpl_found_person_body">%1$s जवळ एक व्यक्ती सापडली आहे। वर्णन: %2$s। कृती: ओळख पटवण्यासाठी परिसरातील स्वयंसेवक आणि समन्वयकांना मदतीची विनंती करण्यात येत आहे।</string>
+    <string name="alert_tpl_missing_child_title">हरवलेले मूल - गंभीर</string>
+    <string name="alert_tpl_missing_child_body">%1$s जवळ एक मूल हरवल्याची नोंद झाली आहे। वर्णन: %2$s। कृती: तातडीचा शोध आवश्यक। परिसरातील सर्व कर्मचाऱ्यांनी आपल्या आसपासचा परिसर तपासावा।</string>
+    <string name="alert_tpl_crowd_surge_title">गर्दी सुरक्षा अलर्ट</string>
+    <string name="alert_tpl_crowd_surge_body">%1$s जवळ गर्दीचे प्रमाण जास्त असल्याची नोंद झाली आहे। सध्याची स्थिती: %2$s। कृती: परिसरातील पोलीस/स्वयंसेवकांनी हालचालींवर लक्ष ठेवावे आणि अधिक गर्दी होऊ नये यासाठी प्रयत्न करावेत।</string>
+    <string name="alert_tpl_road_blockage_title">रस्ता अडथळा</string>
+    <string name="alert_tpl_road_blockage_body">%1$s जवळ वाहतूक विस्कळीत झाली आहे। कारण: %2$s। कृती: मार्ग कर्मचाऱ्यांनी अडथळ्याची पाहणी करून रस्ता मोकळा करण्यासाठी समन्वय साधावा।</string>
+    <string name="alert_tpl_water_shortage_title">पाण्याची टंचाई</string>
+    <string name="alert_tpl_water_shortage_body">%1$s येथे पाण्याची टंचाई नोंदवण्यात आली आहे। कृती: पुरवठा पूर्ववत करण्यासाठी लॉजिस्टिक टीमला समन्वय साधण्याची विनंती करण्यात आली आहे।</string>
+    <string name="alert_tpl_food_shortage_title">पुरवठ्याची कमतरता</string>
+    <string name="alert_tpl_food_shortage_body">%1$s येथे अन्नाची/पुरवठ्याची कमतरता नोंदवण्यात आली आहे। कृती: पुरवठ्यासाठी जवळच्या स्वयंसेवी संस्थांशी समन्वय साधला जात आहे।</string>
+    <string name="alert_tpl_sanitation_title">स्वच्छतेची समस्या</string>
+    <string name="alert_tpl_sanitation_body">%1$s जवळ स्वच्छतेच्या समस्येची नोंद झाली आहे। कृती: स्वच्छता पथकाला घटनास्थळी पाठवण्यात आले आहे।</string>
+    <string name="alert_tpl_volunteer_assist_title">मदतीची गरज</string>
+    <string name="alert_tpl_volunteer_assist_body">%1$s येथे %2$s साठी अतिरिक्त स्वयंसेवकांची गरज आहे। कृती: परिसरातील उपलब्ध स्वयंसेवकांनी कृपया समन्वयकाला कळवावे।</string>
+    <string name="alert_tpl_fire_hazard_title">आग/सुरक्षा धोका</string>
+    <string name="alert_tpl_fire_hazard_body">%1$s जवळ संभाव्य सुरक्षा धोक्याची नोंद झाली आहे। कृती: तातडीच्या प्रतिसादाची विनंती करण्यात येत आहे। वारकऱ्यांना त्या भागापासून दूर ठेवा।</string>
+    <string name="alert_tpl_security_title">सुरक्षा घटना</string>
+    <string name="alert_tpl_security_body">%1$s येथे सुरक्षा घटनेची नोंद झाली आहे। कृती: पोलीस युनिट्सनी पाहणीसाठी घटनास्थळी जावे।</string>
+    <string name="alert_tpl_infrastructure_title">पायाभूत सुविधा समस्या</string>
+    <string name="alert_tpl_infrastructure_body">%1$s येथे पायाभूत सुविधांचे नुकसान/समस्या नोंदवण्यात आली आहे। कृती: देखभाल पथकाला सूचित करण्यात आले आहे।</string>
+    <string name="alert_tpl_general_title">सामान्य घटना</string>
+    <string name="alert_tpl_general_body">%1$s येथे घटनेची नोंद झाली आहे। वर्णन: %2$s। कृती: संबंधित कर्मचाऱ्यांनी पाहणी करण्याची विनंती करण्यात येत आहे।</string>
+    <string name="alert_tpl_sos_critical_title">गंभीर SOS</string>
+    <string name="alert_tpl_sos_critical_body">%1$s येथे तातडीच्या मदतीची गरज आहे। घटना: %2$s। नोंदवलेली वेळ: %3$s। आवश्यक कृती: जवळच्या उपलब्ध प्रतिसादकर्त्याने त्वरित पुढे जावे आणि या अलर्टची पोच द्यावी।</string>
+
+    <string name="alert_unknown_location">अज्ञात ठिकाण</string>
+    <string name="alert_approx_location">अंदाजित ठिकाण</string>
+    <string name="alert_reported_by">%1$s यांनी नोंदवले</string>
+    <string name="alert_id">ID: %1$s</string>
+
+    <!-- Quick Actions (Marathi) -->
+    <string name="action_acknowledge">पोच द्या</string>
+    <string name="action_accept_respond">प्रतिसाद द्या</string>
+    <string name="action_view_location">मॅप पहा</string>
+    <string name="action_contact_reporter">रिपोर्टरशी संपर्क साधा</string>
+    <string name="action_escalate">पुढील स्तरावर पाठवा</string>
+    <string name="action_mark_resolved">झाले असे नोंदवा</string>
+    <string name="action_en_route">मार्गावर</string>
+    <string name="action_on_scene">घटनास्थळी</string>
+    <string name="action_reassign">पुन्हा नेमणूक करा</string>
 
     <!-- ============ police ============ -->
     <string name="police_patrol_tasks">गस्त कामे</string>

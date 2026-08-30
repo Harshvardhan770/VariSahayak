@@ -319,6 +319,10 @@ dependencies {
     // debug APK to grow by roughly 15 MB.
     implementation(libs.livekit.android)
 
+    // --- excel ---
+    implementation(libs.poi.ooxml)
+
+
     // --- kotlinx ---
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.coroutines.play.services)

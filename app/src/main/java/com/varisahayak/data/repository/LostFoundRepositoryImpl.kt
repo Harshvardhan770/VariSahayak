@@ -30,6 +30,7 @@ import com.varisahayak.domain.model.SyncState
 import com.varisahayak.domain.repository.AttributeSearch
 import com.varisahayak.domain.repository.IncidentRepository
 import com.varisahayak.domain.repository.LostFoundRepository
+import com.varisahayak.domain.repository.RewardRepository
 import com.varisahayak.domain.repository.ReportDetails
 import com.varisahayak.domain.usecase.LostFoundMatchingEngine
 import io.github.jan.supabase.SupabaseClient
@@ -55,6 +56,7 @@ class LostFoundRepositoryImpl @Inject constructor(
     private val custodyDao: CustodyDao,
     private val matchDao: LostFoundMatchDao,
     private val incidentRepository: IncidentRepository,
+    private val rewardRepository: RewardRepository,
     private val matchingEngine: LostFoundMatchingEngine,
     private val syncScheduler: SyncScheduler,
     private val dispatchers: DispatcherProvider,
@@ -187,6 +189,14 @@ class LostFoundRepositoryImpl @Inject constructor(
             )
 
             lostFoundDao.upsert(report.toEntity())
+
+            // Gamification: Award XP for filing a report
+            rewardRepository.awardXp(
+                amount = com.varisahayak.domain.model.RewardEngine.XP_PROMPT_RESPONSE,
+                reason = "Filed ${report.kind.name.lowercase()} report",
+                relatedEntityId = report.clientId
+            )
+            rewardRepository.recordImpact(lostFoundAssisted = 1)
 
             if (details.kind == LostFoundKind.FOUND) {
                 recordCustodyInternal(
@@ -577,6 +587,14 @@ class LostFoundRepositoryImpl @Inject constructor(
         // Only a human confirmation closes a case. Facial similarity, however strong,
         // never gets here on its own.
         if (verdict == MatchStatus.CONFIRMED) {
+            // Gamification: Award XP for confirming a match
+            rewardRepository.awardXp(
+                amount = com.varisahayak.domain.model.RewardEngine.XP_ASSIST_LOST_FOUND,
+                reason = "Confirmed Lost & Found match",
+                relatedEntityId = matchClientId
+            )
+            rewardRepository.recordImpact(peopleAssisted = 2) // Both sides helped
+
             lostFoundDao.setStatus(
                 existing.lostReportClientId,
                 LostFoundStatus.REUNITED.wireName,
