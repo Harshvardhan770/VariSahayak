@@ -14,7 +14,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
@@ -54,6 +53,8 @@ class CommunicationViewModel @Inject constructor(
         initialValue = emptyList()
     )
 
+    private val observedChannelIds = mutableSetOf<String>()
+
     init {
         // Default to the first channel
         viewModelScope.launch {
@@ -63,20 +64,16 @@ class CommunicationViewModel @Inject constructor(
                     _selectedChannelId.value = firstChannelId
                     walkieController.join(firstChannelId)
                 }
-            }
-        }
 
-        // Start collecting messages for all channels to update session storage
-        // Note: For a real app with many channels, we'd only observe the active one or use a shared flow.
-        // For this requirement, we observe everything to keep the session alive.
-        viewModelScope.launch {
-            repository.observeChannels().collect { channels ->
+                // Start collecting messages for each channel once
                 channels.forEach { channel ->
-                    repository.observeMessages(channel.id)
-                        .onEach { message ->
-                            addMessageToSession(message)
-                        }
-                        .launchIn(this)
+                    if (observedChannelIds.add(channel.id)) {
+                        repository.observeMessages(channel.id)
+                            .onEach { message ->
+                                addMessageToSession(message)
+                            }
+                            .launchIn(viewModelScope)
+                    }
                 }
             }
         }
