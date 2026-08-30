@@ -1,15 +1,24 @@
 package com.varisahayak.feature.lostfound
 
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -27,6 +36,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -63,6 +73,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -120,6 +131,7 @@ fun LostFoundScreen(
         ) {
             // Candidates first. A pending match is somebody waiting to be reunited, and it
             // outranks everything else on this screen.
+            // Candidates first.
             if (uiState.candidateCount > 0) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -758,7 +770,11 @@ private fun PhotoPicker(
     ) { uri ->
         // Imported rather than referenced: a picker grant does not survive a process
         // restart, and a report filed offline may not upload for hours.
-        uri?.let { PhotoCapture.importFromUri(context, it)?.let(onPhotoCaptured) }
+        if (uri != null) {
+            PhotoCapture.importFromUri(context, uri)?.let { path ->
+                onPhotoCaptured(path)
+            }
+        }
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(Dimens.SpaceXs)) {
