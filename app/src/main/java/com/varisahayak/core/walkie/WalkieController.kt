@@ -43,12 +43,34 @@ interface WalkieController {
 }
 
 /**
- * The stub that ships today.
+ * The channel roster.
  *
- * There is no audio transport in VARI Sahayak yet — no capture, no codec, no signalling.
- * This exists so the widget, its states, and its accessibility behaviour are all real and
- * testable, and so that swapping in LiveKit or a Supabase Realtime broadcast is a matter of
- * providing a different binding rather than rewriting a screen.
+ * Shared by every implementation so the ids in the picker, the room names the token
+ * function will mint for, and the rooms the server actually hosts are one list rather than
+ * three that agree by coincidence.
+ *
+ * All three are open to any signed-in user. There is no role gate on a radio channel: in an
+ * emergency the person who needs to speak is whoever is standing there.
+ */
+object WalkieChannels {
+
+    val DEFAULT = WalkieChannel(id = "route-main", name = "Route Net 1", memberCount = 0)
+
+    val ALL = listOf(
+        DEFAULT,
+        WalkieChannel(id = "medical", name = "Medical", memberCount = 0),
+        WalkieChannel(id = "emergency", name = "Emergency", memberCount = 0, isEmergency = true),
+    )
+
+    fun byId(channelId: String): WalkieChannel? = ALL.firstOrNull { it.id == channelId }
+}
+
+/**
+ * The fallback stub.
+ *
+ * No longer bound by default — [com.varisahayak.core.walkie.LiveKitWalkieController] is.
+ * Kept in the tree because a single `@Binds` line swaps back to it, which is worth having
+ * when the demo VM is unreachable and the UI still needs exercising.
  *
  * It reports [WalkieUiState.isSimulated] `true`, and the widget renders that fact rather
  * than concealing it. A radio control that looks live but carries nothing would be worse
@@ -77,9 +99,9 @@ class SimulatedWalkieController @Inject constructor(
         if (_state.value.channel?.id == channelId) return
         _state.update {
             it.copy(
-                channel = CHANNELS.firstOrNull { channel -> channel.id == channelId }
-                    ?: DEFAULT_CHANNEL,
-                floor = WalkieFloor.Idle,
+                channel = WalkieChannels.byId(channelId) ?: DEFAULT_CHANNEL,
+                isMicOpen = false,
+                speakers = emptyList(),
                 levels = emptyList(),
             )
         }
@@ -93,7 +115,8 @@ class SimulatedWalkieController @Inject constructor(
                 // The roster stays: leaving a channel must still leave the volunteer a way
                 // back onto one, and an emptied list would render an inert widget.
                 connection = WalkieConnection.NotConfigured,
-                floor = WalkieFloor.Idle,
+                isMicOpen = false,
+                speakers = emptyList(),
                 levels = emptyList(),
             )
         }
@@ -101,14 +124,14 @@ class SimulatedWalkieController @Inject constructor(
 
     override fun startTransmit() {
         if (!_state.value.canTransmit) return
-        _state.update { it.copy(floor = WalkieFloor.Transmitting) }
+        _state.update { it.copy(isMicOpen = true) }
         startLevelFeed()
     }
 
     override fun stopTransmit() {
         levelJob?.cancel()
         levelJob = null
-        _state.update { it.copy(floor = WalkieFloor.Idle, levels = emptyList()) }
+        _state.update { it.copy(isMicOpen = false, levels = emptyList()) }
     }
 
     /**
@@ -140,16 +163,7 @@ class SimulatedWalkieController @Inject constructor(
     companion object {
         private const val LEVEL_INTERVAL_MS = 60L
 
-        val DEFAULT_CHANNEL = WalkieChannel(
-            id = "route-main",
-            name = "Route Net 1",
-            memberCount = 12,
-        )
-
-        val CHANNELS = listOf(
-            DEFAULT_CHANNEL,
-            WalkieChannel(id = "medical", name = "Medical", memberCount = 6),
-            WalkieChannel(id = "emergency", name = "Emergency", memberCount = 23, isEmergency = true),
-        )
+        val DEFAULT_CHANNEL = WalkieChannels.DEFAULT
+        val CHANNELS = WalkieChannels.ALL
     }
 }

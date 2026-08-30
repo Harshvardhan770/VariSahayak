@@ -6,21 +6,26 @@ import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
 import com.varisahayak.app.navigation.Destination
 import com.varisahayak.core.common.AppError
+import com.varisahayak.core.common.Clock
 import com.varisahayak.core.common.Outcome
 import com.varisahayak.domain.model.Capabilities
 import com.varisahayak.domain.model.Incident
 import com.varisahayak.domain.model.IncidentStatus
+import com.varisahayak.domain.model.TimelineEvent
 import com.varisahayak.domain.model.capabilities
 import com.varisahayak.domain.repository.AuthRepository
 import com.varisahayak.domain.repository.IncidentRepository
 import com.varisahayak.domain.repository.ProfileRepository
 import com.varisahayak.domain.usecase.IncidentActionPolicy
+import com.varisahayak.domain.usecase.IncidentTimelineMetrics
+import com.varisahayak.domain.usecase.ResponseMetrics
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -36,6 +41,8 @@ data class IncidentDetailUiState(
 class IncidentDetailViewModel @Inject constructor(
     private val incidentRepository: IncidentRepository,
     private val profileRepository: ProfileRepository,
+    private val timelineMetrics: IncidentTimelineMetrics,
+    private val clock: Clock,
     private val authRepository: AuthRepository,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
@@ -70,6 +77,47 @@ class IncidentDetailViewModel @Inject constructor(
             )
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /**
+     * The incident's lifecycle, oldest first.
+     *
+     * Realtime rather than polled: `incident_events` is in the `supabase_realtime`
+     * publication and RealtimeCoordinator already refreshes on every change, so a command
+     * user watching this screen sees an acceptance or an arrival appear as it happens.
+     */
+    val timeline: StateFlow<List<TimelineEvent>> = incidentRepository.observeTimeline(clientId)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /**
+     * Response timings, recomputed whenever the trail changes.
+     *
+     * Derived from the events rather than stored, so a metric read a week later gives the
+     * same answer as one read now.
+     */
+    val metrics: StateFlow<ResponseMetrics> = timeline
+        .map { timelineMetrics.calculate(it, clock.nowEpochMillis()) }
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            timelineMetrics.calculate(emptyList(), clock.nowEpochMillis()),
+        )
+
+    init {
+        // Most of this trail is written by database triggers this device never saw, so it
+        // has to be fetched rather than waited for.
+        //
+        // Re-fetched whenever the incident row itself changes, which is precisely when new
+        // events exist: RealtimeCoordinator is already subscribed to `incidents` and
+        // refreshes on every change, so an acceptance or an arrival pulls its own events in
+        // behind it. That reuses the existing realtime rather than opening a second channel
+        // for the one screen that needs it, and it means no polling.
+        viewModelScope.launch {
+            incidentRepository.observeById(clientId)
+                .map { it?.status to it?.updatedAtEpochMillis }
+                .distinctUntilChanged()
+                .collect { incidentRepository.refreshTimeline(clientId) }
+        }
+    }
 
     private val _uiState = MutableStateFlow(IncidentDetailUiState())
     val uiState: StateFlow<IncidentDetailUiState> = _uiState.asStateFlow()

@@ -1,7 +1,7 @@
 package com.varisahayak.core.di
 
 import com.varisahayak.core.common.DispatcherProvider
-import com.varisahayak.core.walkie.SimulatedWalkieController
+import com.varisahayak.core.walkie.LiveKitWalkieController
 import com.varisahayak.core.walkie.WalkieController
 import dagger.Binds
 import dagger.Module
@@ -43,10 +43,19 @@ object WalkieProvidesModule {
 abstract class WalkieBindsModule {
 
     /**
-     * Bound to the simulated implementation because no audio transport exists yet. When
-     * one lands, this is the only line that changes.
+     * The real transport: LiveKit over a self-hosted server.
+     *
+     * Bound unconditionally, including when LIVEKIT_URL is unset. Falling back to
+     * SimulatedWalkieController in that case would be the wrong kind of graceful: the
+     * simulator reports the channel as Connected and leaves push-to-talk enabled, so a
+     * misconfigured build would hand a volunteer a live-looking button that carries
+     * nothing. LiveKitWalkieController reports NotConfigured instead, and the widget says
+     * the radio is unavailable.
+     *
+     * SimulatedWalkieController stays in the tree for UI work with no server to hand.
+     * Swapping to it is this one line.
      */
     @Binds
     @Singleton
-    abstract fun bindWalkieController(impl: SimulatedWalkieController): WalkieController
+    abstract fun bindWalkieController(impl: LiveKitWalkieController): WalkieController
 }

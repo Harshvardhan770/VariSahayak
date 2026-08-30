@@ -12,6 +12,25 @@
 
     <uses-permission android:name="android.permission.CAMERA" />
 
+    <!--
+        Push-to-talk. Requested at runtime the first time the radio panel is opened, never
+        at launch: a volunteer who has not touched the radio has no reason to be asked for
+        their microphone.
+
+        MODIFY_AUDIO_SETTINGS is install-time, not runtime. WebRTC needs it to put the
+        device into communication mode — without it the audio routes through the media
+        stream, which means speakerphone volume behaves like music playback and echo
+        cancellation is not applied.
+    -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+
+    <!-- Bluetooth headsets are common on a route. Neither is required for the radio to
+         work; both are scoped to audio routing only. -->
+    <uses-permission
+        android:name="android.permission.BLUETOOTH"
+        android:maxSdkVersion="30" />
+
     <!-- Android 13+ requires a runtime request; FCM declares it but does not ask. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
@@ -20,6 +39,9 @@
 
     <uses-feature
         android:name="android.hardware.camera"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.microphone"
         android:required="false" />
     <uses-feature
         android:name="android.hardware.location.gps"

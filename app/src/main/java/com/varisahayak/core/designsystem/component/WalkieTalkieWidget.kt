@@ -40,6 +40,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -235,10 +236,18 @@ private fun ChannelPicker(
 @Composable
 private fun channelSubtitle(state: WalkieUiState): String {
     val channel = state.channel ?: return ""
+    val speakerText = speakerLabel(state.speakers)
+
     return when {
         // Named first, because "who is talking" outranks everything else on a radio.
-        state.floor is WalkieFloor.Receiving ->
-            stringResource(R.string.walkie_speaking, state.floor.speakerName)
+        state.floor is WalkieFloor.Receiving && speakerText != null -> speakerText
+
+        // Overlap makes this reachable: your mic is open and somebody else's is too. Your
+        // own state leads — being wrong about whether you are live is the costlier mistake
+        // — but the other voices are still named, because on a channel with no floor
+        // control that is the only warning you are talking over somebody.
+        state.isTransmitting && speakerText != null ->
+            stringResource(R.string.walkie_on_air_hearing, speakerText)
 
         state.isTransmitting -> stringResource(R.string.walkie_on_air)
 
@@ -248,12 +257,38 @@ private fun channelSubtitle(state: WalkieUiState): String {
         state.connection == WalkieConnection.Connecting ->
             stringResource(R.string.walkie_connecting)
 
+        // No server address was compiled in. Distinct from Disconnected on purpose: one is
+        // a build that was never pointed at a radio, the other is a radio that cannot be
+        // reached, and they need different things done about them.
+        state.connection == WalkieConnection.NotConfigured ->
+            stringResource(R.string.walkie_not_configured)
+
         // The honest label. No transport is attached, and the widget says so rather than
         // letting a volunteer believe a keyed mic was heard.
         state.isSimulated -> stringResource(R.string.walkie_no_transport)
 
         else -> stringResource(R.string.walkie_members, channel.memberCount)
     }
+}
+
+/**
+ * "Amit speaking", or "Amit + 2 others".
+ *
+ * The first name in full and the rest as a count. Three names side by side do not fit the
+ * widget's single line and would truncate mid-word; a count always fits and still answers
+ * the question the volunteer is actually asking, which is whether more than one person is
+ * on the air right now.
+ */
+@Composable
+private fun speakerLabel(speakers: List<String>): String? = when {
+    speakers.isEmpty() -> null
+    speakers.size == 1 -> stringResource(R.string.walkie_speaking, speakers.first())
+    else -> pluralStringResource(
+        R.plurals.walkie_speaking_more,
+        speakers.size - 1,
+        speakers.first(),
+        speakers.size - 1,
+    )
 }
 
 /**
@@ -353,9 +388,11 @@ private fun PushToTalkButton(
         label = "pttScale",
     )
 
+    // No "channel busy" state. Mics overlap by design, so hearing somebody else does not
+    // take the button away — it stays "Hold to talk" and keying up interrupts them, which
+    // is the behaviour an emergency needs.
     val label = when {
         state.isTransmitting -> stringResource(R.string.walkie_on_air)
-        state.isReceiving -> stringResource(R.string.walkie_busy)
         !enabled -> stringResource(R.string.walkie_unavailable)
         else -> stringResource(R.string.walkie_hold_to_talk)
     }

@@ -274,6 +274,12 @@
     <string name="walkie_show">रेडियो दिखाएँ</string>
     <string name="walkie_hide">रेडियो छिपाएँ</string>
     <string name="walkie_speaking">%1$s बोल रहे हैं</string>
+    <plurals name="walkie_speaking_more">
+        <item quantity="one">%1$s + %2$d अन्य</item>
+        <item quantity="other">%1$s + %2$d अन्य</item>
+    </plurals>
+    <string name="walkie_on_air_hearing">प्रसारण चालू · %1$s</string>
+    <string name="walkie_not_configured">रेडियो कॉन्फ़िगर नहीं है</string>
     <string name="walkie_on_air">प्रसारण जारी</string>
     <string name="walkie_disconnected">कनेक्शन टूटा</string>
     <string name="walkie_connecting">जोड़ा जा रहा है…</string>
@@ -292,6 +298,8 @@
     <string name="notification_assignment_body">आपको एक घटना सौंपी गई है।</string>
     <string name="notification_escalation_title">घटना बढ़ाई गई</string>
     <string name="notification_escalation_body">एक घटना पर ध्यान चाहिए।</string>
+    <string name="notification_incident_title">नई घटना दर्ज</string>
+    <string name="notification_incident_body">आपके क्षेत्र में एक घटना के लिए प्रतिसादकर्ता चाहिए।</string>
     <string name="notification_status_title">घटना अपडेट हुई</string>
     <string name="notification_status_body">एक घटना की स्थिति बदल गई है।</string>
     <string name="notification_announcement_title">घोषणा</string>
